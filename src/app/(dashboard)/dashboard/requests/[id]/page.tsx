@@ -18,48 +18,9 @@ import {
 } from "lucide-react";
 import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
 import { RequestApprovalActions } from "./request-actions";
-
-// TODO: Replace with actual DB fetch
-async function getRequest(id: string) {
-  const requests: Record<string, {
-    id: string;
-    requester: { name: string; phone: string; email: string | null };
-    item: { name: string; catalogNumber: string; type: string };
-    department: string;
-    quantity: number;
-    urgency: "immediate" | "scheduled";
-    purpose: string | null;
-    notes: string | null;
-    status: string;
-    createdAt: Date;
-    approvedBy: string | null;
-    approvedAt: Date | null;
-    rejectionReason: string | null;
-    handedOverBy: string | null;
-    handedOverAt: Date | null;
-    returnedAt: Date | null;
-  }> = {
-    "1": {
-      id: "1",
-      requester: { name: "יוסי כהן", phone: "0541234567", email: "yosi@example.com" },
-      item: { name: "מכשיר קשר דגם X", catalogNumber: "K-2341", type: "serial" },
-      department: "קשר",
-      quantity: 1,
-      urgency: "immediate",
-      purpose: "אימון שטח",
-      notes: "צריך עד סוף השבוע",
-      status: "submitted",
-      createdAt: new Date("2026-01-22T09:30:00"),
-      approvedBy: null,
-      approvedAt: null,
-      rejectionReason: null,
-      handedOverBy: null,
-      handedOverAt: null,
-      returnedAt: null,
-    },
-  };
-  return requests[id] || null;
-}
+import { db } from "@/db";
+import { requests } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function RequestDetailPage({
   params,
@@ -70,7 +31,17 @@ export default async function RequestDetailPage({
   if (!session?.user) redirect("/login");
 
   const { id } = await params;
-  const request = await getRequest(id);
+
+  const request = await db.query.requests.findFirst({
+    where: eq(requests.id, id),
+    with: {
+      requester: true,
+      itemType: true,
+      department: true,
+      approvedBy: true,
+      handedOverBy: true,
+    },
+  });
 
   if (!request) {
     notFound();
@@ -84,8 +55,8 @@ export default async function RequestDetailPage({
   return (
     <div>
       <PageHeader
-        title={`בקשה #${request.id}`}
-        description={`${request.item.name} • ${request.department}`}
+        title={`בקשה #${request.id.slice(0, 8)}`}
+        description={`${request.itemType?.name || "-"} • ${request.department?.name || "-"}`}
         actions={
           <Link href="/dashboard/requests">
             <Button variant="outline">
@@ -136,21 +107,21 @@ export default async function RequestDetailPage({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-slate-500">שם הפריט</p>
-                  <p className="font-medium">{request.item.name}</p>
+                  <p className="font-medium">{request.itemType?.name || "-"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">מק״ט</p>
                   <code className="bg-slate-100 px-2 py-1 rounded text-sm">
-                    {request.item.catalogNumber}
+                    {request.itemType?.catalogNumber || "-"}
                   </code>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">כמות</p>
-                  <p className="font-medium">{request.quantity} יח'</p>
+                  <p className="font-medium">{request.quantity} יח&apos;</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">מחלקה</p>
-                  <p className="font-medium">{request.department}</p>
+                  <p className="font-medium">{request.department?.name || "-"}</p>
                 </div>
               </div>
             </CardContent>
@@ -231,7 +202,7 @@ export default async function RequestDetailPage({
                       </p>
                       <p className="text-sm text-slate-500">
                         {formatDateTime(request.approvedAt)}
-                        {request.approvedBy && ` • ${request.approvedBy}`}
+                        {request.approvedBy && ` • ${request.approvedBy.firstName} ${request.approvedBy.lastName}`}
                       </p>
                     </div>
                   </div>
@@ -246,7 +217,7 @@ export default async function RequestDetailPage({
                       <p className="font-medium">הפריט נמסר</p>
                       <p className="text-sm text-slate-500">
                         {formatDateTime(request.handedOverAt)}
-                        {request.handedOverBy && ` • ${request.handedOverBy}`}
+                        {request.handedOverBy && ` • ${request.handedOverBy.firstName} ${request.handedOverBy.lastName}`}
                       </p>
                     </div>
                   </div>
@@ -282,13 +253,15 @@ export default async function RequestDetailPage({
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm text-slate-500">שם</p>
-                <p className="font-medium">{request.requester.name}</p>
+                <p className="font-medium">
+                  {request.requester?.firstName} {request.requester?.lastName}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">טלפון</p>
-                <p className="font-medium" dir="ltr">{request.requester.phone}</p>
+                <p className="font-medium" dir="ltr">{request.requester?.phone}</p>
               </div>
-              {request.requester.email && (
+              {request.requester?.email && (
                 <div>
                   <p className="text-sm text-slate-500">אימייל</p>
                   <p className="font-medium">{request.requester.email}</p>
@@ -309,6 +282,12 @@ export default async function RequestDetailPage({
                 <p className="text-sm text-slate-500">תאריך הגשה</p>
                 <p className="font-medium">{formatDateTime(request.createdAt)}</p>
               </div>
+              {request.scheduledReturnAt && (
+                <div>
+                  <p className="text-sm text-slate-500">תאריך החזרה מתוכנן</p>
+                  <p className="font-medium">{formatDateTime(request.scheduledReturnAt)}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

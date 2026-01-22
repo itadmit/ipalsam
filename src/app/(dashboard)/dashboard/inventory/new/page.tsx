@@ -6,42 +6,32 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { NewItemForm } from "./new-item-form";
+import { db } from "@/db";
+import { departments, categories } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 async function getDepartments() {
-  // TODO: Fetch from DB
-  return [
-    { id: "1", name: "קשר" },
-    { id: "2", name: "נשק" },
-    { id: "3", name: "לוגיסטיקה" },
-    { id: "4", name: "אפסנאות" },
-    { id: "5", name: "רכב" },
-    { id: "6", name: "שלישות" },
-  ];
+  return await db.query.departments.findMany({
+    where: eq(departments.isActive, true),
+    columns: { id: true, name: true },
+    orderBy: (departments, { asc }) => [asc(departments.name)],
+  });
 }
 
 async function getCategoriesByDepartment() {
-  // TODO: Fetch from DB
-  return {
-    "1": [
-      { id: "1", name: "מכשירי קשר" },
-      { id: "2", name: "אנטנות" },
-      { id: "3", name: "אביזרי קשר" },
-    ],
-    "2": [
-      { id: "4", name: "נשק קל" },
-      { id: "5", name: "תחמושת" },
-    ],
-    "3": [
-      { id: "6", name: "מחשוב" },
-      { id: "7", name: "ציוד משרדי" },
-    ],
-    "4": [
-      { id: "8", name: "סוללות ומצברים" },
-      { id: "9", name: "חומרי ניקיון" },
-    ],
-    "5": [],
-    "6": [],
-  };
+  const allCategories = await db.query.categories.findMany({
+    where: eq(categories.isActive, true),
+    columns: { id: true, name: true, departmentId: true },
+  });
+
+  const grouped: Record<string, { id: string; name: string }[]> = {};
+  for (const cat of allCategories) {
+    if (!grouped[cat.departmentId]) {
+      grouped[cat.departmentId] = [];
+    }
+    grouped[cat.departmentId].push({ id: cat.id, name: cat.name });
+  }
+  return grouped;
 }
 
 export default async function NewInventoryItemPage() {
@@ -53,7 +43,7 @@ export default async function NewInventoryItemPage() {
     redirect("/dashboard");
   }
 
-  const departments = await getDepartments();
+  const departmentsList = await getDepartments();
   const categoriesByDepartment = await getCategoriesByDepartment();
 
   return (
@@ -74,7 +64,7 @@ export default async function NewInventoryItemPage() {
       <Card className="max-w-2xl">
         <CardContent className="p-6">
           <NewItemForm
-            departments={departments}
+            departments={departmentsList}
             categoriesByDepartment={categoriesByDepartment}
             userDepartmentId={session.user.departmentId}
             userRole={session.user.role}
@@ -84,4 +74,3 @@ export default async function NewInventoryItemPage() {
     </div>
   );
 }
-

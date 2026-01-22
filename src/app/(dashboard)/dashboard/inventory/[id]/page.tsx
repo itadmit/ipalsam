@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -7,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table,
   TableHeader,
@@ -23,65 +23,10 @@ import {
   History,
   AlertTriangle,
 } from "lucide-react";
-import { getStatusColor, getStatusLabel } from "@/lib/utils";
-
-// TODO: Replace with actual DB fetch
-async function getItemType(id: string) {
-  const items: Record<string, {
-    id: string;
-    name: string;
-    catalogNumber: string;
-    category: string;
-    department: string;
-    type: "serial" | "quantity";
-    total: number;
-    available: number;
-    inUse: number;
-    description: string;
-    notes: string;
-    minimumAlert: number;
-    requiresDoubleApproval: boolean;
-    maxLoanDays: number | null;
-  }> = {
-    "1": {
-      id: "1",
-      name: "מכשיר קשר דגם X",
-      catalogNumber: "K-2341",
-      category: "מכשירי קשר",
-      department: "קשר",
-      type: "serial",
-      total: 60,
-      available: 45,
-      inUse: 15,
-      description: "מכשיר קשר נייד לשימוש צבאי",
-      notes: "יש לטעון לפני שימוש",
-      minimumAlert: 10,
-      requiresDoubleApproval: false,
-      maxLoanDays: 7,
-    },
-  };
-  return items[id] || null;
-}
-
-async function getSerialUnits(itemTypeId: string) {
-  // TODO: Fetch from DB
-  return [
-    { id: "1", serialNumber: "K-2341-001", status: "available", holder: null },
-    { id: "2", serialNumber: "K-2341-002", status: "available", holder: null },
-    { id: "3", serialNumber: "K-2341-003", status: "in_use", holder: "יוסי כהן" },
-    { id: "4", serialNumber: "K-2341-004", status: "in_use", holder: "דנה לוי" },
-    { id: "5", serialNumber: "K-2341-005", status: "maintenance", holder: null },
-  ];
-}
-
-async function getRecentMovements(itemTypeId: string) {
-  // TODO: Fetch from DB
-  return [
-    { id: "1", type: "allocation", user: "יוסי כהן", quantity: 1, date: "22/01/2026 09:30" },
-    { id: "2", type: "return", user: "דנה לוי", quantity: 1, date: "21/01/2026 16:00" },
-    { id: "3", type: "intake", user: "ולרי כהן", quantity: 5, date: "20/01/2026 10:00" },
-  ];
-}
+import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
+import { db } from "@/db";
+import { itemTypes, itemUnits, movements } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 export default async function InventoryItemPage({
   params,
@@ -92,23 +37,50 @@ export default async function InventoryItemPage({
   if (!session?.user) redirect("/login");
 
   const { id } = await params;
-  const item = await getItemType(id);
+
+  const item = await db.query.itemTypes.findFirst({
+    where: eq(itemTypes.id, id),
+    with: {
+      department: true,
+      category: true,
+    },
+  });
 
   if (!item) {
     notFound();
   }
 
-  const units = item.type === "serial" ? await getSerialUnits(id) : [];
-  const movements = await getRecentMovements(id);
+  // Get serial units if serial type
+  const units = item.type === "serial"
+    ? await db.query.itemUnits.findMany({
+        where: eq(itemUnits.itemTypeId, id),
+        with: {
+          currentHolder: true,
+        },
+      })
+    : [];
 
-  const availablePercent = Math.round((item.available / item.total) * 100);
-  const isLow = item.available <= item.minimumAlert;
+  // Get recent movements
+  const recentMovements = await db.query.movements.findMany({
+    where: eq(movements.itemTypeId, id),
+    limit: 10,
+    orderBy: [desc(movements.createdAt)],
+    with: {
+      executedBy: true,
+    },
+  });
+
+  const total = item.quantityTotal || 0;
+  const available = item.quantityAvailable || 0;
+  const inUse = item.quantityInUse || 0;
+  const availablePercent = total > 0 ? Math.round((available / total) * 100) : 0;
+  const isLow = available <= (item.minimumAlert || 0);
 
   return (
     <div>
       <PageHeader
         title={item.name}
-        description={`מק״ט: ${item.catalogNumber} • ${item.department} • ${item.category}`}
+        description={`מק״ט: ${item.catalogNumber || "-"} • ${item.department?.name || "-"} • ${item.category?.name || "-"}`}
         actions={
           <div className="flex gap-2">
             <Link href="/dashboard/inventory">
@@ -134,14 +106,14 @@ export default async function InventoryItemPage({
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-slate-900">{item.total}</p>
+                <p className="text-3xl font-bold text-slate-900">{total}</p>
                 <p className="text-sm text-slate-500">סה״כ</p>
               </CardContent>
             </Card>
             <Card className={isLow ? "border-red-200 bg-red-50" : ""}>
               <CardContent className="p-4 text-center">
                 <p className={`text-3xl font-bold ${isLow ? "text-red-600" : "text-green-600"}`}>
-                  {item.available}
+                  {available}
                 </p>
                 <p className="text-sm text-slate-500">זמין</p>
                 {isLow && (
@@ -154,7 +126,7 @@ export default async function InventoryItemPage({
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">{item.inUse}</p>
+                <p className="text-3xl font-bold text-blue-600">{inUse}</p>
                 <p className="text-sm text-slate-500">בשימוש</p>
               </CardContent>
             </Card>
@@ -177,11 +149,11 @@ export default async function InventoryItemPage({
           </Card>
 
           {/* Serial Units Table */}
-          {item.type === "serial" && units.length > 0 && (
+          {item.type === "serial" && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>יחידות סריאליות</CardTitle>
-                <Link href={`/dashboard/inventory/${id}/add-unit`}>
+                <Link href={`/dashboard/inventory/intake?itemTypeId=${id}`}>
                   <Button size="sm">
                     <Plus className="w-4 h-4" />
                     הוסף יחידה
@@ -189,32 +161,52 @@ export default async function InventoryItemPage({
                 </Link>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>מספר סידורי</TableHead>
-                      <TableHead>סטטוס</TableHead>
-                      <TableHead>מחזיק</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {units.map((unit) => (
-                      <TableRow key={unit.id}>
-                        <TableCell>
-                          <code className="text-sm bg-slate-100 px-2 py-1 rounded">
-                            {unit.serialNumber}
-                          </code>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(unit.status)}>
-                            {getStatusLabel(unit.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{unit.holder || "-"}</TableCell>
+                {units.length === 0 ? (
+                  <EmptyState
+                    icon={Package}
+                    title="אין יחידות"
+                    description="הוסף יחידות סריאליות לפריט זה"
+                    action={
+                      <Link href={`/dashboard/inventory/intake?itemTypeId=${id}`}>
+                        <Button>
+                          <Plus className="w-4 h-4" />
+                          הוסף יחידה
+                        </Button>
+                      </Link>
+                    }
+                  />
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>מספר סידורי</TableHead>
+                        <TableHead>סטטוס</TableHead>
+                        <TableHead>מחזיק</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {units.map((unit) => (
+                        <TableRow key={unit.id}>
+                          <TableCell>
+                            <code className="text-sm bg-slate-100 px-2 py-1 rounded">
+                              {unit.serialNumber}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(unit.status)}>
+                              {getStatusLabel(unit.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {unit.currentHolder
+                              ? `${unit.currentHolder.firstName} ${unit.currentHolder.lastName}`
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           )}
@@ -228,25 +220,42 @@ export default async function InventoryItemPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {movements.map((movement) => (
-                  <div
-                    key={movement.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-slate-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Badge variant={movement.type === "intake" ? "success" : movement.type === "return" ? "info" : "warning"}>
-                        {movement.type === "intake" ? "קליטה" : movement.type === "return" ? "החזרה" : "הקצאה"}
-                      </Badge>
-                      <span className="text-sm">{movement.user}</span>
-                      {movement.quantity > 1 && (
-                        <span className="text-sm text-slate-500">({movement.quantity} יח')</span>
-                      )}
+              {recentMovements.length === 0 ? (
+                <EmptyState
+                  icon={History}
+                  title="אין תנועות"
+                  description="עדיין לא בוצעו תנועות בפריט זה"
+                />
+              ) : (
+                <div className="space-y-3">
+                  {recentMovements.map((movement) => (
+                    <div
+                      key={movement.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-slate-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Badge variant={
+                          movement.type === "intake" ? "success" :
+                          movement.type === "return" ? "info" : "warning"
+                        }>
+                          {movement.type === "intake" ? "קליטה" :
+                           movement.type === "return" ? "החזרה" :
+                           movement.type === "allocation" ? "הקצאה" : movement.type}
+                        </Badge>
+                        <span className="text-sm">
+                          {movement.executedBy
+                            ? `${movement.executedBy.firstName} ${movement.executedBy.lastName}`
+                            : "-"}
+                        </span>
+                        {movement.quantity > 1 && (
+                          <span className="text-sm text-slate-500">({movement.quantity} יח&apos;)</span>
+                        )}
+                      </div>
+                      <span className="text-sm text-slate-500">{formatDateTime(movement.createdAt)}</span>
                     </div>
-                    <span className="text-sm text-slate-500">{movement.date}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -277,11 +286,11 @@ export default async function InventoryItemPage({
               </div>
               <div>
                 <p className="text-sm text-slate-500">התראת מלאי נמוך</p>
-                <p className="text-sm">{item.minimumAlert} יח'</p>
+                <p className="text-sm">{item.minimumAlert} יח&apos;</p>
               </div>
               {item.maxLoanDays && (
                 <div>
-                  <p className="text-sm text-slate-500">מקס' ימי השאלה</p>
+                  <p className="text-sm text-slate-500">מקס&apos; ימי השאלה</p>
                   <p className="text-sm">{item.maxLoanDays} ימים</p>
                 </div>
               )}
@@ -300,13 +309,13 @@ export default async function InventoryItemPage({
               <CardTitle>פעולות מהירות</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Link href={`/dashboard/inventory/intake?item=${id}`} className="block">
+              <Link href={`/dashboard/inventory/intake?itemTypeId=${id}`} className="block">
                 <Button variant="outline" className="w-full justify-start">
                   <Plus className="w-4 h-4" />
                   קליטת יחידות
                 </Button>
               </Link>
-              <Link href={`/dashboard/handover?item=${id}`} className="block">
+              <Link href={`/dashboard/handover`} className="block">
                 <Button variant="outline" className="w-full justify-start">
                   <Package className="w-4 h-4" />
                   מסירה/החזרה
@@ -319,4 +328,3 @@ export default async function InventoryItemPage({
     </div>
   );
 }
-

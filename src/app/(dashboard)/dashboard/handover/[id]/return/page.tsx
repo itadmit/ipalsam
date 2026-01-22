@@ -15,56 +15,9 @@ import {
 } from "lucide-react";
 import { formatDateTime, formatDate } from "@/lib/utils";
 import { ReturnForm } from "./return-form";
-
-// TODO: Replace with actual DB fetch
-async function getLoan(id: string) {
-  const loans: Record<string, {
-    id: string;
-    holder: { name: string; phone: string };
-    item: { name: string; catalogNumber: string; type: "serial" | "quantity" };
-    serialNumber: string | null;
-    quantity: number;
-    borrowedAt: Date;
-    dueDate: Date;
-    isOverdue: boolean;
-    daysOverdue: number;
-  }> = {
-    "1": {
-      id: "1",
-      holder: { name: "יוסי כהן", phone: "0541234567" },
-      item: { name: "מכשיר קשר דגם X", catalogNumber: "K-2341", type: "serial" },
-      serialNumber: "K-2341-015",
-      quantity: 1,
-      borrowedAt: new Date("2026-01-20T09:00:00"),
-      dueDate: new Date("2026-01-27T17:00:00"),
-      isOverdue: false,
-      daysOverdue: 0,
-    },
-    "2": {
-      id: "2",
-      holder: { name: "שרה גולן", phone: "0523334455" },
-      item: { name: "מכשיר קשר דגם X", catalogNumber: "K-2341", type: "serial" },
-      serialNumber: "K-2341-022",
-      quantity: 1,
-      borrowedAt: new Date("2026-01-15T10:00:00"),
-      dueDate: new Date("2026-01-20T17:00:00"),
-      isOverdue: true,
-      daysOverdue: 2,
-    },
-    "3": {
-      id: "3",
-      holder: { name: "דנה לוי", phone: "0529876543" },
-      item: { name: "סוללות AA", catalogNumber: "B-5500", type: "quantity" },
-      serialNumber: null,
-      quantity: 10,
-      borrowedAt: new Date("2026-01-21T08:30:00"),
-      dueDate: new Date("2026-01-28T17:00:00"),
-      isOverdue: false,
-      daysOverdue: 0,
-    },
-  };
-  return loans[id] || null;
-}
+import { db } from "@/db";
+import { requests } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function ReturnPage({
   params,
@@ -80,17 +33,50 @@ export default async function ReturnPage({
   }
 
   const { id } = await params;
-  const loan = await getLoan(id);
 
-  if (!loan) {
+  const request = await db.query.requests.findFirst({
+    where: eq(requests.id, id),
+    with: {
+      requester: true,
+      itemType: true,
+      itemUnit: true,
+    },
+  });
+
+  if (!request || request.status !== "handed_over") {
     notFound();
   }
+
+  const dueDate = request.scheduledReturnAt || new Date();
+  const now = new Date();
+  const diffTime = dueDate.getTime() - now.getTime();
+  const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const isOverdue = daysLeft < 0;
+
+  const loanData = {
+    id: request.id,
+    holder: {
+      name: `${request.requester?.firstName} ${request.requester?.lastName}`,
+      phone: request.requester?.phone || "",
+    },
+    item: {
+      name: request.itemType?.name || "",
+      catalogNumber: request.itemType?.catalogNumber || "",
+      type: request.itemType?.type as "serial" | "quantity",
+    },
+    serialNumber: request.itemUnit?.serialNumber || null,
+    quantity: request.quantity,
+    borrowedAt: request.handedOverAt || new Date(),
+    dueDate,
+    isOverdue,
+    daysOverdue: isOverdue ? Math.abs(daysLeft) : 0,
+  };
 
   return (
     <div>
       <PageHeader
         title="קבלת החזרה"
-        description={`השאלה #${loan.id}`}
+        description={`בקשה #${request.id.slice(0, 8)}`}
         actions={
           <Link href="/dashboard/loans">
             <Button variant="outline">
@@ -101,16 +87,16 @@ export default async function ReturnPage({
         }
       />
 
-      {loan.isOverdue && (
+      {isOverdue && (
         <Card className="mb-6 border-red-200 bg-red-50">
           <CardContent className="p-4 flex items-center gap-3">
             <AlertTriangle className="w-6 h-6 text-red-600" />
             <div>
               <p className="font-semibold text-red-800">
-                פריט באיחור של {loan.daysOverdue} ימים!
+                פריט באיחור של {loanData.daysOverdue} ימים!
               </p>
               <p className="text-sm text-red-600">
-                תאריך החזרה המקורי: {formatDate(loan.dueDate)}
+                תאריך החזרה המקורי: {formatDate(dueDate)}
               </p>
             </div>
           </CardContent>
@@ -128,7 +114,7 @@ export default async function ReturnPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ReturnForm loan={loan} />
+              <ReturnForm loan={loanData} />
             </CardContent>
           </Card>
         </div>
@@ -146,11 +132,11 @@ export default async function ReturnPage({
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm text-slate-500">שם</p>
-                <p className="font-medium">{loan.holder.name}</p>
+                <p className="font-medium">{loanData.holder.name}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">טלפון</p>
-                <p className="font-medium" dir="ltr">{loan.holder.phone}</p>
+                <p className="font-medium" dir="ltr">{loanData.holder.phone}</p>
               </div>
             </CardContent>
           </Card>
@@ -166,7 +152,7 @@ export default async function ReturnPage({
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm text-slate-500">סטטוס</p>
-                {loan.isOverdue ? (
+                {isOverdue ? (
                   <Badge variant="destructive">באיחור</Badge>
                 ) : (
                   <Badge variant="info">בהשאלה</Badge>
@@ -174,12 +160,12 @@ export default async function ReturnPage({
               </div>
               <div>
                 <p className="text-sm text-slate-500">תאריך השאלה</p>
-                <p className="font-medium">{formatDateTime(loan.borrowedAt)}</p>
+                <p className="font-medium">{formatDateTime(loanData.borrowedAt)}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">תאריך החזרה</p>
-                <p className={`font-medium ${loan.isOverdue ? "text-red-600" : ""}`}>
-                  {formatDate(loan.dueDate)}
+                <p className={`font-medium ${isOverdue ? "text-red-600" : ""}`}>
+                  {formatDate(dueDate)}
                 </p>
               </div>
             </CardContent>
@@ -189,4 +175,3 @@ export default async function ReturnPage({
     </div>
   );
 }
-

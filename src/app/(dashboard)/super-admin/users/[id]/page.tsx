@@ -9,50 +9,10 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, User, Key, Shield } from "lucide-react";
 import { getRoleLabel, formatPhone, formatDate } from "@/lib/utils";
 import { EditUserForm } from "./edit-user-form";
+import { db } from "@/db";
+import { users, departments } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import type { SessionUser } from "@/types";
-
-async function getUser(id: string) {
-  // TODO: Fetch from DB
-  const users: Record<string, {
-    id: string;
-    phone: string;
-    firstName: string;
-    lastName: string;
-    email: string | null;
-    role: "super_admin" | "hq_commander" | "dept_commander" | "soldier";
-    departmentId: string | null;
-    departmentName: string | null;
-    isActive: boolean;
-    lastLogin: Date | null;
-    createdAt: Date;
-  }> = {
-    "1": {
-      id: "1",
-      phone: "0542284283",
-      firstName: "יוגב",
-      lastName: "אביטן",
-      email: "itadmit@gmail.com",
-      role: "super_admin",
-      departmentId: null,
-      departmentName: null,
-      isActive: true,
-      lastLogin: new Date("2026-01-22T08:30:00"),
-      createdAt: new Date("2026-01-01"),
-    },
-  };
-  return users[id] || null;
-}
-
-async function getDepartments() {
-  return [
-    { id: "1", name: "קשר" },
-    { id: "2", name: "נשק" },
-    { id: "3", name: "לוגיסטיקה" },
-    { id: "4", name: "אפסנאות" },
-    { id: "5", name: "רכב" },
-    { id: "6", name: "שלישות" },
-  ];
-}
 
 export default async function EditUserPage({
   params,
@@ -66,13 +26,24 @@ export default async function EditUserPage({
   }
 
   const { id } = await params;
-  const user = await getUser(id);
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, id),
+    with: {
+      department: true,
+    },
+  });
 
   if (!user) {
     notFound();
   }
 
-  const departments = await getDepartments();
+  const departmentsList = await db.query.departments.findMany({
+    where: eq(departments.isActive, true),
+    columns: { id: true, name: true },
+    orderBy: (departments, { asc }) => [asc(departments.name)],
+  });
+
   const isSuperAdmin = session.user.role === "super_admin";
 
   const getRoleBadgeVariant = (role: string) => {
@@ -82,6 +53,20 @@ export default async function EditUserPage({
       case "dept_commander": return "info";
       default: return "secondary";
     }
+  };
+
+  const userData = {
+    id: user.id,
+    phone: user.phone,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    role: user.role as SessionUser["role"],
+    departmentId: user.departmentId,
+    departmentName: user.department?.name || null,
+    isActive: user.isActive,
+    lastLogin: user.lastLogin,
+    createdAt: user.createdAt,
   };
 
   return (
@@ -110,8 +95,8 @@ export default async function EditUserPage({
             </CardHeader>
             <CardContent>
               <EditUserForm
-                user={user}
-                departments={departments}
+                user={userData}
+                departments={departmentsList}
                 isSuperAdmin={isSuperAdmin}
               />
             </CardContent>
@@ -130,7 +115,7 @@ export default async function EditUserPage({
               <div>
                 <p className="text-sm text-slate-500">תפקיד</p>
                 <Badge variant={getRoleBadgeVariant(user.role)}>
-                  {getRoleLabel(user.role)}
+                  {getRoleLabel(user.role as SessionUser["role"])}
                 </Badge>
               </div>
               <div>
@@ -139,10 +124,10 @@ export default async function EditUserPage({
                   {user.isActive ? "פעיל" : "לא פעיל"}
                 </Badge>
               </div>
-              {user.departmentName && (
+              {user.department?.name && (
                 <div>
                   <p className="text-sm text-slate-500">מחלקה</p>
-                  <p className="font-medium">{user.departmentName}</p>
+                  <p className="font-medium">{user.department.name}</p>
                 </div>
               )}
               <div>
@@ -184,4 +169,3 @@ export default async function EditUserPage({
     </div>
   );
 }
-

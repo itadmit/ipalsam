@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Database,
   Calendar,
@@ -11,30 +12,9 @@ import {
 import { formatDate } from "@/lib/utils";
 import type { SessionUser } from "@/types";
 import { BaseActions, PeriodActions } from "./base-actions";
-
-async function getBaseInfo() {
-  // TODO: Fetch from DB
-  return {
-    id: "1",
-    name: "בסיס מרכזי",
-    status: "active" as const,
-    commanderName: "ניסם חדד",
-    commanderPhone: "0527320191",
-    openDate: new Date("2026-01-01"),
-    currentPeriod: {
-      id: "1",
-      name: "תעסוקה ינואר 2026",
-      startDate: new Date("2026-01-01"),
-      isActive: true,
-    },
-    stats: {
-      departments: 6,
-      users: 156,
-      items: 1250,
-      activeLoans: 245,
-    },
-  };
-}
+import { db } from "@/db";
+import { bases, departments, users, itemTypes, requests, operationalPeriods } from "@/db/schema";
+import { eq, count, and, desc } from "drizzle-orm";
 
 export default async function BaseManagementPage() {
   const session = await auth();
@@ -43,7 +23,55 @@ export default async function BaseManagementPage() {
     redirect("/dashboard");
   }
 
-  const base = await getBaseInfo();
+  // Get base info
+  const base = await db.query.bases.findFirst();
+
+  if (!base) {
+    return (
+      <div>
+        <PageHeader
+          title="ניהול בסיס"
+          description="ניהול תקופות, פתיחה וסגירה"
+        />
+        <EmptyState
+          icon={Database}
+          title="אין בסיס"
+          description="יש לאפס את המערכת כדי ליצור בסיס"
+        />
+      </div>
+    );
+  }
+
+  // Get current period
+  const currentPeriod = await db.query.operationalPeriods.findFirst({
+    where: and(
+      eq(operationalPeriods.baseId, base.id),
+      eq(operationalPeriods.isActive, true)
+    ),
+  });
+
+  // Get past periods
+  const pastPeriods = await db.query.operationalPeriods.findMany({
+    where: and(
+      eq(operationalPeriods.baseId, base.id),
+      eq(operationalPeriods.isActive, false)
+    ),
+    orderBy: [desc(operationalPeriods.endDate)],
+    limit: 5,
+  });
+
+  // Get stats
+  const [deptCount] = await db.select({ count: count() }).from(departments).where(eq(departments.baseId, base.id));
+  const [userCount] = await db.select({ count: count() }).from(users).where(eq(users.baseId, base.id));
+  const [itemCount] = await db.select({ count: count() }).from(itemTypes);
+  const [activeLoansCount] = await db.select({ count: count() }).from(requests).where(eq(requests.status, "handed_over"));
+
+  const stats = {
+    departments: deptCount?.count || 0,
+    users: userCount?.count || 0,
+    items: itemCount?.count || 0,
+    activeLoans: activeLoansCount?.count || 0,
+  };
 
   return (
     <div>
@@ -79,12 +107,12 @@ export default async function BaseManagementPage() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">מפקד</p>
-                  <p className="font-medium">{base.commanderName}</p>
-                  <p className="text-sm text-slate-500" dir="ltr">{base.commanderPhone}</p>
+                  <p className="font-medium">{base.commanderName || "-"}</p>
+                  <p className="text-sm text-slate-500" dir="ltr">{base.commanderPhone || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">תאריך פתיחה</p>
-                  <p className="font-medium">{formatDate(base.openDate)}</p>
+                  <p className="text-sm text-slate-500">תאריך יצירה</p>
+                  <p className="font-medium">{formatDate(base.createdAt)}</p>
                 </div>
               </div>
             </CardContent>
@@ -99,15 +127,15 @@ export default async function BaseManagementPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {base.currentPeriod ? (
+              {currentPeriod ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                     <div>
                       <p className="font-semibold text-emerald-900">
-                        {base.currentPeriod.name}
+                        {currentPeriod.name}
                       </p>
                       <p className="text-sm text-emerald-700">
-                        התחלה: {formatDate(base.currentPeriod.startDate)}
+                        התחלה: {formatDate(currentPeriod.startDate)}
                       </p>
                     </div>
                     <Badge variant="success">
@@ -119,7 +147,7 @@ export default async function BaseManagementPage() {
                   <BaseActions
                     baseId={base.id}
                     hasActivePeriod={true}
-                    periodName={base.currentPeriod.name}
+                    periodName={currentPeriod.name}
                   />
                 </div>
               ) : (
@@ -134,7 +162,7 @@ export default async function BaseManagementPage() {
               <CardTitle>פעולות תקופה</CardTitle>
             </CardHeader>
             <CardContent>
-              <PeriodActions periodId={base.currentPeriod?.id || ""} />
+              <PeriodActions periodId={currentPeriod?.id || ""} />
             </CardContent>
           </Card>
         </div>
@@ -148,19 +176,19 @@ export default async function BaseManagementPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <span className="text-slate-600">מחלקות</span>
-                <span className="text-xl font-bold">{base.stats.departments}</span>
+                <span className="text-xl font-bold">{stats.departments}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <span className="text-slate-600">משתמשים</span>
-                <span className="text-xl font-bold">{base.stats.users}</span>
+                <span className="text-xl font-bold">{stats.users}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-slate-600">פריטי ציוד</span>
-                <span className="text-xl font-bold">{base.stats.items.toLocaleString()}</span>
+                <span className="text-slate-600">סוגי ציוד</span>
+                <span className="text-xl font-bold">{stats.items.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <span className="text-slate-600">השאלות פעילות</span>
-                <span className="text-xl font-bold">{base.stats.activeLoans}</span>
+                <span className="text-xl font-bold">{stats.activeLoans}</span>
               </div>
             </CardContent>
           </Card>
@@ -170,9 +198,25 @@ export default async function BaseManagementPage() {
               <CardTitle>תקופות קודמות</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-slate-500 py-4">
-                אין תקופות קודמות
-              </p>
+              {pastPeriods.length === 0 ? (
+                <p className="text-center text-slate-500 py-4">
+                  אין תקופות קודמות
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {pastPeriods.map((period) => (
+                    <div
+                      key={period.id}
+                      className="p-3 bg-slate-50 rounded-lg"
+                    >
+                      <p className="font-medium text-sm">{period.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {formatDate(period.startDate)} - {formatDate(period.endDate)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

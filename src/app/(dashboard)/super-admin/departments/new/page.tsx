@@ -6,14 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { NewDepartmentForm } from "./new-department-form";
+import { db } from "@/db";
+import { bases } from "@/db/schema";
 import type { SessionUser } from "@/types";
-
-async function getBases() {
-  // TODO: Fetch from DB
-  return [
-    { id: "1", name: "בסיס מרכזי" },
-  ];
-}
 
 export default async function NewDepartmentPage() {
   const session = await auth();
@@ -22,7 +17,9 @@ export default async function NewDepartmentPage() {
     redirect("/dashboard");
   }
 
-  const bases = await getBases();
+  const basesList = await db.query.bases.findMany({
+    columns: { id: true, name: true },
+  });
 
   return (
     <div>
@@ -41,10 +38,9 @@ export default async function NewDepartmentPage() {
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">
-          <NewDepartmentForm bases={bases} />
+          <NewDepartmentForm bases={basesList} />
         </CardContent>
       </Card>
     </div>
   );
 }
-

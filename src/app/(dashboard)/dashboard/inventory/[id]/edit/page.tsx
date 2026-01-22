@@ -7,46 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { EditItemForm } from "./edit-item-form";
-
-// TODO: Replace with actual DB fetch
-async function getItemType(id: string) {
-  const items: Record<string, {
-    id: string;
-    name: string;
-    catalogNumber: string;
-    categoryId: string;
-    departmentId: string;
-    type: "serial" | "quantity";
-    description: string;
-    notes: string;
-    minimumAlert: number;
-    requiresDoubleApproval: boolean;
-    maxLoanDays: number | null;
-  }> = {
-    "1": {
-      id: "1",
-      name: "מכשיר קשר דגם X",
-      catalogNumber: "K-2341",
-      categoryId: "1",
-      departmentId: "1",
-      type: "serial",
-      description: "מכשיר קשר נייד לשימוש צבאי",
-      notes: "יש לטעון לפני שימוש",
-      minimumAlert: 10,
-      requiresDoubleApproval: false,
-      maxLoanDays: 7,
-    },
-  };
-  return items[id] || null;
-}
-
-async function getCategories() {
-  return [
-    { id: "1", name: "מכשירי קשר" },
-    { id: "2", name: "אנטנות" },
-    { id: "3", name: "אביזרי קשר" },
-  ];
-}
+import { db } from "@/db";
+import { itemTypes, categories } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function EditInventoryItemPage({
   params,
@@ -57,19 +20,39 @@ export default async function EditInventoryItemPage({
   if (!session?.user) redirect("/login");
 
   const { id } = await params;
-  const item = await getItemType(id);
+
+  const item = await db.query.itemTypes.findFirst({
+    where: eq(itemTypes.id, id),
+  });
 
   if (!item) {
     notFound();
   }
 
-  const categories = await getCategories();
+  const categoriesList = await db.query.categories.findMany({
+    where: eq(categories.departmentId, item.departmentId),
+    columns: { id: true, name: true },
+  });
+
+  const itemData = {
+    id: item.id,
+    name: item.name,
+    catalogNumber: item.catalogNumber || "",
+    categoryId: item.categoryId || "",
+    departmentId: item.departmentId,
+    type: item.type as "serial" | "quantity",
+    description: item.description || "",
+    notes: item.notes || "",
+    minimumAlert: item.minimumAlert || 0,
+    requiresDoubleApproval: item.requiresDoubleApproval,
+    maxLoanDays: item.maxLoanDays,
+  };
 
   return (
     <div>
       <PageHeader
         title={`עריכת ${item.name}`}
-        description={`מק״ט: ${item.catalogNumber}`}
+        description={`מק״ט: ${item.catalogNumber || "-"}`}
         actions={
           <Link href={`/dashboard/inventory/${id}`}>
             <Button variant="outline">
@@ -82,10 +65,9 @@ export default async function EditInventoryItemPage({
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">
-          <EditItemForm item={item} categories={categories} />
+          <EditItemForm item={itemData} categories={categoriesList} />
         </CardContent>
       </Card>
     </div>
   );
 }
-

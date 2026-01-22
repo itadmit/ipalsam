@@ -6,19 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { NewUserForm } from "./new-user-form";
+import { db } from "@/db";
+import { departments } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import type { SessionUser } from "@/types";
-
-async function getDepartments() {
-  // TODO: Fetch from DB
-  return [
-    { id: "1", name: "קשר" },
-    { id: "2", name: "נשק" },
-    { id: "3", name: "לוגיסטיקה" },
-    { id: "4", name: "אפסנאות" },
-    { id: "5", name: "רכב" },
-    { id: "6", name: "שלישות" },
-  ];
-}
 
 export default async function NewUserPage() {
   const session = await auth();
@@ -27,7 +18,12 @@ export default async function NewUserPage() {
     redirect("/dashboard");
   }
 
-  const departments = await getDepartments();
+  const departmentsList = await db.query.departments.findMany({
+    where: eq(departments.isActive, true),
+    columns: { id: true, name: true },
+    orderBy: (departments, { asc }) => [asc(departments.name)],
+  });
+
   const isSuperAdmin = session.user.role === "super_admin";
 
   return (
@@ -47,10 +43,9 @@ export default async function NewUserPage() {
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">
-          <NewUserForm departments={departments} isSuperAdmin={isSuperAdmin} />
+          <NewUserForm departments={departmentsList} isSuperAdmin={isSuperAdmin} />
         </CardContent>
       </Card>
     </div>
   );
 }
-

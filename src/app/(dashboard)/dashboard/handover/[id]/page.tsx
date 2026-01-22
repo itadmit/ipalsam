@@ -11,51 +11,13 @@ import {
   Package,
   User,
   Calendar,
-  CheckCircle,
   PenLine,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { HandoverForm } from "./handover-form";
-
-// TODO: Replace with actual DB fetch
-async function getHandoverRequest(id: string) {
-  const requests: Record<string, {
-    id: string;
-    requester: { name: string; phone: string };
-    item: { name: string; catalogNumber: string; type: "serial" | "quantity" };
-    availableUnits: { id: string; serialNumber: string }[];
-    quantity: number;
-    status: string;
-    approvedAt: Date;
-    approvedBy: string;
-  }> = {
-    "1": {
-      id: "1",
-      requester: { name: "יוסי כהן", phone: "0541234567" },
-      item: { name: "מכשיר קשר דגם X", catalogNumber: "K-2341", type: "serial" },
-      availableUnits: [
-        { id: "u1", serialNumber: "K-2341-001" },
-        { id: "u2", serialNumber: "K-2341-002" },
-        { id: "u3", serialNumber: "K-2341-003" },
-      ],
-      quantity: 1,
-      status: "approved",
-      approvedAt: new Date("2026-01-22T09:00:00"),
-      approvedBy: "ולרי כהן",
-    },
-    "2": {
-      id: "2",
-      requester: { name: "דנה לוי", phone: "0529876543" },
-      item: { name: "סוללות AA", catalogNumber: "B-5500", type: "quantity" },
-      availableUnits: [],
-      quantity: 10,
-      status: "approved",
-      approvedAt: new Date("2026-01-22T08:30:00"),
-      approvedBy: "ולרי כהן",
-    },
-  };
-  return requests[id] || null;
-}
+import { db } from "@/db";
+import { requests, itemUnits } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export default async function HandoverDetailPage({
   params,
@@ -71,17 +33,58 @@ export default async function HandoverDetailPage({
   }
 
   const { id } = await params;
-  const request = await getHandoverRequest(id);
+
+  const request = await db.query.requests.findFirst({
+    where: eq(requests.id, id),
+    with: {
+      requester: true,
+      itemType: true,
+      approvedBy: true,
+    },
+  });
 
   if (!request) {
     notFound();
   }
 
+  // Get available units for serial items
+  let availableUnits: { id: string; serialNumber: string }[] = [];
+  if (request.itemType?.type === "serial") {
+    const units = await db.query.itemUnits.findMany({
+      where: and(
+        eq(itemUnits.itemTypeId, request.itemTypeId),
+        eq(itemUnits.status, "available")
+      ),
+      columns: { id: true, serialNumber: true },
+    });
+    availableUnits = units;
+  }
+
+  const requestData = {
+    id: request.id,
+    requester: {
+      name: `${request.requester?.firstName} ${request.requester?.lastName}`,
+      phone: request.requester?.phone || "",
+    },
+    item: {
+      name: request.itemType?.name || "",
+      catalogNumber: request.itemType?.catalogNumber || "",
+      type: request.itemType?.type as "serial" | "quantity",
+    },
+    availableUnits,
+    quantity: request.quantity,
+    status: request.status,
+    approvedAt: request.approvedAt || new Date(),
+    approvedBy: request.approvedBy
+      ? `${request.approvedBy.firstName} ${request.approvedBy.lastName}`
+      : "",
+  };
+
   return (
     <div>
       <PageHeader
         title="ביצוע מסירה"
-        description={`בקשה #${request.id}`}
+        description={`בקשה #${request.id.slice(0, 8)}`}
         actions={
           <Link href="/dashboard/handover">
             <Button variant="outline">
@@ -103,7 +106,7 @@ export default async function HandoverDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <HandoverForm request={request} />
+              <HandoverForm request={requestData} />
             </CardContent>
           </Card>
         </div>
@@ -121,11 +124,11 @@ export default async function HandoverDetailPage({
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm text-slate-500">שם</p>
-                <p className="font-medium">{request.requester.name}</p>
+                <p className="font-medium">{requestData.requester.name}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">טלפון</p>
-                <p className="font-medium" dir="ltr">{request.requester.phone}</p>
+                <p className="font-medium" dir="ltr">{requestData.requester.phone}</p>
               </div>
             </CardContent>
           </Card>
@@ -145,11 +148,11 @@ export default async function HandoverDetailPage({
               </div>
               <div>
                 <p className="text-sm text-slate-500">אושר ע״י</p>
-                <p className="font-medium">{request.approvedBy}</p>
+                <p className="font-medium">{requestData.approvedBy}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">תאריך אישור</p>
-                <p className="font-medium">{formatDateTime(request.approvedAt)}</p>
+                <p className="font-medium">{formatDateTime(requestData.approvedAt)}</p>
               </div>
             </CardContent>
           </Card>
@@ -176,4 +179,3 @@ export default async function HandoverDetailPage({
     </div>
   );
 }
-
