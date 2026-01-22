@@ -2,10 +2,7 @@ import { auth, canAccessSuperAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
-  FileText,
-  Download,
   Package,
   Users,
   AlertTriangle,
@@ -14,6 +11,7 @@ import {
   Calendar,
 } from "lucide-react";
 import type { SessionUser } from "@/types";
+import { ReportCardActions, QuickExportButton } from "./report-actions";
 
 export default async function ReportsPage() {
   const session = await auth();
@@ -87,15 +85,7 @@ export default async function ReportsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-500 mb-4">{report.description}</p>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
-                  <FileText className="w-4 h-4" />
-                  צפייה
-                </Button>
-                <Button variant="outline">
-                  <Download className="w-4 h-4" />
-                </Button>
-              </div>
+              <ReportCardActions reportId={report.id} reportTitle={report.title} />
             </CardContent>
           </Card>
         ))}
@@ -108,26 +98,13 @@ export default async function ReportsPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
-            <Button variant="outline">
-              <Download className="w-4 h-4" />
-              ייצוא מלאי מלא (CSV)
-            </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4" />
-              ייצוא משתמשים (CSV)
-            </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4" />
-              ייצוא בקשות החודש (CSV)
-            </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4" />
-              ייצוא Audit Log (CSV)
-            </Button>
+            <QuickExportButton type="inventory" label="ייצוא מלאי מלא (CSV)" />
+            <QuickExportButton type="users" label="ייצוא משתמשים (CSV)" />
+            <QuickExportButton type="requests" label="ייצוא בקשות החודש (CSV)" />
+            <QuickExportButton type="audit" label="ייצוא Audit Log (CSV)" />
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
-

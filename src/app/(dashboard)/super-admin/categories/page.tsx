@@ -1,12 +1,21 @@
-import { Suspense } from "react";
 import { auth, canAccessSuperAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Plus, Boxes, Edit, Trash2 } from "lucide-react";
+import { Boxes } from "lucide-react";
 import type { SessionUser } from "@/types";
+import { AddCategoryButton, CategoryRowActions, AddCategoryToDeptButton } from "./category-actions";
+
+async function getDepartments() {
+  // TODO: Fetch from DB
+  return [
+    { id: "1", name: "קשר" },
+    { id: "2", name: "נשק" },
+    { id: "3", name: "לוגיסטיקה" },
+    { id: "4", name: "אפסנאות" },
+  ];
+}
 
 async function getCategoriesByDepartment() {
   // TODO: Fetch from DB
@@ -54,6 +63,7 @@ export default async function CategoriesPage() {
     redirect("/dashboard");
   }
 
+  const departments = await getDepartments();
   const departmentCategories = await getCategoriesByDepartment();
 
   return (
@@ -61,12 +71,7 @@ export default async function CategoriesPage() {
       <PageHeader
         title="ניהול קטגוריות"
         description="הגדרת קטגוריות ציוד לפי מחלקות"
-        actions={
-          <Button>
-            <Plus className="w-4 h-4" />
-            קטגוריה חדשה
-          </Button>
-        }
+        actions={<AddCategoryButton departments={departments} />}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -92,20 +97,16 @@ export default async function CategoriesPage() {
                         {category.itemCount} סוגי ציוד
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <CategoryRowActions
+                      category={category}
+                      departmentName={dept.departmentName}
+                    />
                   </div>
                 ))}
-                <Button variant="outline" className="w-full mt-2">
-                  <Plus className="w-4 h-4" />
-                  הוסף קטגוריה ל{dept.departmentName}
-                </Button>
+                <AddCategoryToDeptButton
+                  departmentId={dept.departmentId}
+                  departmentName={dept.departmentName}
+                />
               </div>
             </CardContent>
           </Card>
@@ -114,4 +115,3 @@ export default async function CategoriesPage() {
     </div>
   );
 }
-

@@ -3,17 +3,14 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Database,
   Calendar,
   Play,
-  Pause,
-  CheckCircle,
-  AlertTriangle,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { SessionUser } from "@/types";
+import { BaseActions, PeriodActions } from "./base-actions";
 
 async function getBaseInfo() {
   // TODO: Fetch from DB
@@ -119,25 +116,14 @@ export default async function BaseManagementPage() {
                     </Badge>
                   </div>
 
-                  <div className="flex gap-3">
-                    <Button variant="outline" className="flex-1">
-                      <Pause className="w-4 h-4" />
-                      סיים תקופה
-                    </Button>
-                    <Button variant="outline" className="flex-1 text-amber-600 hover:bg-amber-50">
-                      <AlertTriangle className="w-4 h-4" />
-                      התחל קיפול בסיס
-                    </Button>
-                  </div>
+                  <BaseActions
+                    baseId={base.id}
+                    hasActivePeriod={true}
+                    periodName={base.currentPeriod.name}
+                  />
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <p className="text-slate-500 mb-4">אין תקופה פעילה</p>
-                  <Button>
-                    <Play className="w-4 h-4" />
-                    פתח תקופה חדשה
-                  </Button>
-                </div>
+                <BaseActions baseId={base.id} hasActivePeriod={false} />
               )}
             </CardContent>
           </Card>
@@ -147,19 +133,8 @@ export default async function BaseManagementPage() {
             <CardHeader>
               <CardTitle>פעולות תקופה</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
-                <CheckCircle className="w-4 h-4" />
-                צור Snapshot פתיחה
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <CheckCircle className="w-4 h-4" />
-                צור Snapshot סגירה
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <AlertTriangle className="w-4 h-4" />
-                דוח חריגים (מי מחזיק מה)
-              </Button>
+            <CardContent>
+              <PeriodActions periodId={base.currentPeriod?.id || ""} />
             </CardContent>
           </Card>
         </div>
@@ -205,4 +180,3 @@ export default async function BaseManagementPage() {
     </div>
   );
 }
-

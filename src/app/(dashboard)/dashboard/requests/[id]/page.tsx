@@ -17,6 +17,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
+import { RequestApprovalActions } from "./request-actions";
 
 // TODO: Replace with actual DB fetch
 async function getRequest(id: string) {
@@ -80,8 +81,6 @@ export default async function RequestDetailPage({
     session.user.role === "hq_commander" ||
     session.user.role === "dept_commander";
 
-  const isRequester = request.requester.phone === session.user.phone;
-
   return (
     <div>
       <PageHeader
@@ -110,17 +109,8 @@ export default async function RequestDetailPage({
                     {getStatusLabel(request.status)}
                   </Badge>
                 </div>
-                {canApprove && request.status === "submitted" && (
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="text-red-600 hover:bg-red-50">
-                      <XCircle className="w-4 h-4" />
-                      דחה
-                    </Button>
-                    <Button>
-                      <CheckCircle className="w-4 h-4" />
-                      אשר
-                    </Button>
-                  </div>
+                {canApprove && (
+                  <RequestApprovalActions requestId={request.id} status={request.status} />
                 )}
                 {canApprove && request.status === "approved" && (
                   <Link href={`/dashboard/handover/${request.id}`}>
@@ -326,4 +316,3 @@ export default async function RequestDetailPage({
     </div>
   );
 }
-

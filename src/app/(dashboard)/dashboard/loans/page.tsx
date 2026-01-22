@@ -16,57 +16,34 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Package, Filter, AlertTriangle, CheckCircle } from "lucide-react";
+import { Package, AlertTriangle, CheckCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { db } from "@/db";
+import { requests } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 async function getActiveLoans() {
-  // TODO: Fetch from DB
-  return [
-    {
-      id: "1",
-      holder: "יוסי כהן",
-      phone: "0541234567",
-      item: "מכשיר קשר דגם X",
-      serialNumber: "K-2341-015",
-      department: "קשר",
-      borrowedAt: new Date("2026-01-20"),
-      dueDate: new Date("2026-01-27"),
-      daysLeft: 5,
+  const loans = await db.query.requests.findMany({
+    where: eq(requests.status, "handed_over"),
+    with: {
+      requester: true,
+      itemType: true,
+      department: true,
     },
-    {
-      id: "2",
-      holder: "דנה לוי",
-      phone: "0529876543",
-      item: "מחשב נייד",
-      serialNumber: "L-2000-008",
-      department: "לוגיסטיקה",
-      borrowedAt: new Date("2026-01-15"),
-      dueDate: new Date("2026-01-22"),
-      daysLeft: 0,
-    },
-    {
-      id: "3",
-      holder: "אבי מזרחי",
-      phone: "0501112233",
-      item: "אנטנה VHF",
-      serialNumber: "A-1122-022",
-      department: "קשר",
-      borrowedAt: new Date("2026-01-10"),
-      dueDate: new Date("2026-01-20"),
-      daysLeft: -2,
-    },
-    {
-      id: "4",
-      holder: "שרה גולן",
-      phone: "0523334455",
-      item: 'סוללות AA (20 יח")',
-      serialNumber: null,
-      department: "אפסנאות",
-      borrowedAt: new Date("2026-01-21"),
-      dueDate: new Date("2026-01-28"),
-      daysLeft: 6,
-    },
-  ];
+    orderBy: (requests, { asc }) => [asc(requests.scheduledReturnAt)],
+  });
+
+  return loans.map((loan) => {
+    const dueDate = loan.scheduledReturnAt || new Date();
+    const now = new Date();
+    const diffTime = dueDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return {
+      ...loan,
+      daysLeft,
+    };
+  });
 }
 
 export default async function LoansPage() {
@@ -85,7 +62,7 @@ export default async function LoansPage() {
     <div>
       <PageHeader
         title="השאלות פעילות"
-        description={`${loans.length} פריטים בהשאלה • ${overdueCount} באיחור`}
+        description={`${loans.length} פריטים בהשאלה${overdueCount > 0 ? ` • ${overdueCount} באיחור` : ""}`}
         actions={
           <Link href="/dashboard/handover">
             <Button>
@@ -119,10 +96,6 @@ export default async function LoansPage() {
               placeholder="חיפוש לפי שם, טלפון או מספר פריט..."
               className="sm:w-80"
             />
-            <Button variant="outline">
-              <Filter className="w-4 h-4" />
-              סינון
-            </Button>
           </div>
 
           {loans.length === 0 ? (
@@ -153,28 +126,25 @@ export default async function LoansPage() {
                     >
                       <TableCell>
                         <div>
-                          <p className="font-medium">{loan.holder}</p>
+                          <p className="font-medium">
+                            {loan.requester?.firstName} {loan.requester?.lastName}
+                          </p>
                           <p className="text-sm text-slate-500" dir="ltr">
-                            {loan.phone}
+                            {loan.requester?.phone}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{loan.item}</p>
-                          {loan.serialNumber && (
-                            <code className="text-xs bg-slate-100 px-1 rounded">
-                              {loan.serialNumber}
-                            </code>
-                          )}
+                          <p className="font-medium">{loan.itemType?.name}</p>
                         </div>
                       </TableCell>
-                      <TableCell>{loan.department}</TableCell>
+                      <TableCell>{loan.department?.name}</TableCell>
                       <TableCell className="text-sm text-slate-500">
-                        {formatDate(loan.borrowedAt)}
+                        {formatDate(loan.handedOverAt)}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {formatDate(loan.dueDate)}
+                        {formatDate(loan.scheduledReturnAt)}
                       </TableCell>
                       <TableCell>
                         {loan.daysLeft < 0 ? (
@@ -208,4 +178,3 @@ export default async function LoansPage() {
     </div>
   );
 }
-

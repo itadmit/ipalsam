@@ -16,142 +16,70 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Plus,
-  FileText,
-  Filter,
-  Eye,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
+import { Plus, FileText, Eye } from "lucide-react";
 import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
+import { db } from "@/db";
+import { requests } from "@/db/schema";
+import { eq, desc, or, and } from "drizzle-orm";
 import type { SessionUser } from "@/types";
 
 interface SearchParams {
   q?: string;
   status?: string;
-  urgency?: string;
   page?: string;
 }
 
-async function RequestsTable({
-  searchParams,
-  userRole,
-}: {
-  searchParams: SearchParams;
-  userRole: SessionUser["role"];
-}) {
-  // TODO: Fetch from database with filters
-  const requests = [
-    {
-      id: "1",
-      requester: "יוסי כהן",
-      phone: "0541234567",
-      item: "מכשיר קשר",
-      quantity: 1,
-      department: "קשר",
-      urgency: "immediate",
-      status: "submitted",
-      createdAt: new Date("2026-01-22T09:30:00"),
+async function RequestsTable({ searchParams, user }: { searchParams: SearchParams; user: SessionUser }) {
+  // Build query based on user role
+  let allRequests = await db.query.requests.findMany({
+    with: {
+      requester: true,
+      itemType: true,
+      department: true,
     },
-    {
-      id: "2",
-      requester: "דנה לוי",
-      phone: "0529876543",
-      item: "אנטנה VHF",
-      quantity: 2,
-      department: "קשר",
-      urgency: "scheduled",
-      status: "approved",
-      createdAt: new Date("2026-01-21T14:15:00"),
-    },
-    {
-      id: "3",
-      requester: "אבי מזרחי",
-      phone: "0501112233",
-      item: "מחשב נייד",
-      quantity: 1,
-      department: "לוגיסטיקה",
-      urgency: "immediate",
-      status: "ready_for_pickup",
-      createdAt: new Date("2026-01-21T11:00:00"),
-    },
-    {
-      id: "4",
-      requester: "שרה גולן",
-      phone: "0523334455",
-      item: "סוללות AA",
-      quantity: 20,
-      department: "אפסנאות",
-      urgency: "scheduled",
-      status: "handed_over",
-      createdAt: new Date("2026-01-20T16:30:00"),
-    },
-    {
-      id: "5",
-      requester: "משה ישראלי",
-      phone: "0545556677",
-      item: "אוזניות טקטיות",
-      quantity: 1,
-      department: "קשר",
-      urgency: "immediate",
-      status: "rejected",
-      createdAt: new Date("2026-01-20T10:00:00"),
-    },
-    {
-      id: "6",
-      requester: "רחל אברהם",
-      phone: "0507778899",
-      item: "מטען",
-      quantity: 3,
-      department: "קשר",
-      urgency: "scheduled",
-      status: "returned",
-      createdAt: new Date("2026-01-19T15:45:00"),
-    },
-  ];
+    orderBy: (requests, { desc }) => [desc(requests.createdAt)],
+  });
 
-  // Filter based on search
-  let filteredRequests = requests;
+  // Filter based on user role
+  if (user.role === "soldier") {
+    allRequests = allRequests.filter((r) => r.requesterId === user.id);
+  } else if (user.role === "dept_commander" && user.departmentId) {
+    allRequests = allRequests.filter((r) => r.departmentId === user.departmentId);
+  }
+
+  // Filter by search
   if (searchParams.q) {
     const query = searchParams.q.toLowerCase();
-    filteredRequests = requests.filter(
-      (req) =>
-        req.requester.toLowerCase().includes(query) ||
-        req.item.toLowerCase().includes(query)
+    allRequests = allRequests.filter(
+      (r) =>
+        r.itemType?.name?.toLowerCase().includes(query) ||
+        r.requester?.firstName?.toLowerCase().includes(query) ||
+        r.requester?.lastName?.toLowerCase().includes(query)
     );
   }
 
+  // Filter by status
   if (searchParams.status) {
-    filteredRequests = filteredRequests.filter(
-      (req) => req.status === searchParams.status
-    );
+    allRequests = allRequests.filter((r) => r.status === searchParams.status);
   }
 
-  if (filteredRequests.length === 0) {
+  if (allRequests.length === 0) {
     return (
       <EmptyState
         icon={FileText}
-        title="לא נמצאו בקשות"
-        description="נסה לשנות את מילות החיפוש או הפילטרים"
+        title="אין בקשות"
+        description={user.role === "soldier" ? "עדיין לא הגשת בקשות" : "אין בקשות במערכת"}
         action={
-          userRole === "soldier" ? (
-            <Link href="/dashboard/requests/new">
-              <Button>
-                <Plus className="w-4 h-4" />
-                בקשה חדשה
-              </Button>
-            </Link>
-          ) : undefined
+          <Link href="/dashboard/requests/new">
+            <Button>
+              <Plus className="w-4 h-4" />
+              בקשה חדשה
+            </Button>
+          </Link>
         }
       />
     );
   }
-
-  const canApprove =
-    userRole === "super_admin" ||
-    userRole === "hq_commander" ||
-    userRole === "dept_commander";
 
   return (
     <div className="overflow-x-auto">
@@ -161,6 +89,7 @@ async function RequestsTable({
             <TableHead>מבקש</TableHead>
             <TableHead>פריט</TableHead>
             <TableHead>מחלקה</TableHead>
+            <TableHead>כמות</TableHead>
             <TableHead>דחיפות</TableHead>
             <TableHead>סטטוס</TableHead>
             <TableHead>תאריך</TableHead>
@@ -168,31 +97,23 @@ async function RequestsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredRequests.map((request) => (
+          {allRequests.map((request) => (
             <TableRow key={request.id}>
               <TableCell>
                 <div>
-                  <p className="font-medium">{request.requester}</p>
+                  <p className="font-medium">
+                    {request.requester?.firstName} {request.requester?.lastName}
+                  </p>
                   <p className="text-sm text-slate-500" dir="ltr">
-                    {request.phone}
+                    {request.requester?.phone}
                   </p>
                 </div>
               </TableCell>
+              <TableCell>{request.itemType?.name || "-"}</TableCell>
+              <TableCell>{request.department?.name || "-"}</TableCell>
+              <TableCell>{request.quantity}</TableCell>
               <TableCell>
-                <p className="font-medium">{request.item}</p>
-                {request.quantity > 1 && (
-                  <p className="text-sm text-slate-500">
-                    {request.quantity} יח&apos;
-                  </p>
-                )}
-              </TableCell>
-              <TableCell>{request.department}</TableCell>
-              <TableCell>
-                <Badge
-                  variant={
-                    request.urgency === "immediate" ? "destructive" : "info"
-                  }
-                >
+                <Badge variant={request.urgency === "immediate" ? "destructive" : "info"}>
                   {request.urgency === "immediate" ? "מיידי" : "מתוזמן"}
                 </Badge>
               </TableCell>
@@ -205,31 +126,11 @@ async function RequestsTable({
                 {formatDateTime(request.createdAt)}
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-1">
-                  <Link href={`/dashboard/requests/${request.id}`}>
-                    <Button variant="ghost" size="icon">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                  {canApprove && request.status === "submitted" && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+                <Link href={`/dashboard/requests/${request.id}`}>
+                  <Button variant="ghost" size="icon">
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </Link>
               </TableCell>
             </TableRow>
           ))}
@@ -248,22 +149,19 @@ export default async function RequestsPage({
   if (!session?.user) redirect("/login");
 
   const params = await searchParams;
-  const isSoldier = session.user.role === "soldier";
 
   return (
     <div>
       <PageHeader
         title="בקשות"
-        description={isSoldier ? "הבקשות שלי" : "ניהול בקשות הציוד"}
+        description="ניהול בקשות לציוד"
         actions={
-          isSoldier && (
-            <Link href="/dashboard/requests/new">
-              <Button>
-                <Plus className="w-4 h-4" />
-                בקשה חדשה
-              </Button>
-            </Link>
-          )
+          <Link href="/dashboard/requests/new">
+            <Button>
+              <Plus className="w-4 h-4" />
+              בקשה חדשה
+            </Button>
+          </Link>
         }
       />
 
@@ -271,13 +169,9 @@ export default async function RequestsPage({
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <SearchBar
-              placeholder="חיפוש לפי מבקש או פריט..."
+              placeholder="חיפוש לפי שם או פריט..."
               className="sm:w-80"
             />
-            <Button variant="outline">
-              <Filter className="w-4 h-4" />
-              סינון
-            </Button>
           </div>
 
           <Suspense
@@ -287,14 +181,10 @@ export default async function RequestsPage({
               </div>
             }
           >
-            <RequestsTable
-              searchParams={params}
-              userRole={session.user.role as SessionUser["role"]}
-            />
+            <RequestsTable searchParams={params} user={session.user as SessionUser} />
           </Suspense>
         </CardContent>
       </Card>
     </div>
   );
 }
-

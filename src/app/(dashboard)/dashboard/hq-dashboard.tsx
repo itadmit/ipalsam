@@ -5,32 +5,42 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Building2,
   Package,
   FileText,
   AlertTriangle,
-  Clock,
   Plus,
   ArrowLeft,
 } from "lucide-react";
 import type { SessionUser } from "@/types";
+import { db } from "@/db";
+import { departments, itemTypes, requests, users } from "@/db/schema";
+import { eq, count, sql } from "drizzle-orm";
 import { getStatusColor, getStatusLabel } from "@/lib/utils";
 
 interface HQDashboardProps {
   user: SessionUser;
 }
 
-// Server component - fetches data
 async function DashboardStats() {
-  // TODO: Replace with actual data from database
+  const [deptCount] = await db.select({ count: count() }).from(departments);
+  const [itemCount] = await db.select({ count: count() }).from(itemTypes);
+  const [pendingCount] = await db
+    .select({ count: count() })
+    .from(requests)
+    .where(eq(requests.status, "submitted"));
+  const [overdueCount] = await db
+    .select({ count: count() })
+    .from(requests)
+    .where(eq(requests.status, "overdue"));
+
   const stats = {
-    totalDepartments: 6,
-    totalItems: 1250,
-    availableItems: 980,
-    inUseItems: 245,
-    pendingRequests: 12,
-    overdueItems: 3,
+    totalDepartments: deptCount?.count || 0,
+    totalItems: itemCount?.count || 0,
+    pendingRequests: pendingCount?.count || 0,
+    overdueItems: overdueCount?.count || 0,
   };
 
   return (
@@ -39,11 +49,11 @@ async function DashboardStats() {
         title="מחלקות פעילות"
         value={stats.totalDepartments}
         icon={Building2}
-        description="6 מחלקות בבסיס"
+        description={`${stats.totalDepartments} מחלקות בבסיס`}
       />
       <StatCard
-        title="סה״כ פריטים"
-        value={stats.totalItems.toLocaleString()}
+        title="סוגי פריטים"
+        value={stats.totalItems}
         icon={Package}
         iconClassName="bg-blue-50"
       />
@@ -64,36 +74,37 @@ async function DashboardStats() {
 }
 
 async function DepartmentOverview() {
-  // TODO: Replace with actual data
-  const departments = [
-    { id: "1", name: "קשר", available: 120, inUse: 45, pending: 3, overdue: 0 },
-    { id: "2", name: "נשק", available: 85, inUse: 60, pending: 5, overdue: 1 },
-    {
-      id: "3",
-      name: "לוגיסטיקה",
-      available: 200,
-      inUse: 30,
-      pending: 2,
-      overdue: 0,
+  const depts = await db.query.departments.findMany({
+    where: eq(departments.isActive, true),
+    with: {
+      itemTypes: true,
     },
-    {
-      id: "4",
-      name: "אפסנאות",
-      available: 340,
-      inUse: 80,
-      pending: 1,
-      overdue: 2,
-    },
-    { id: "5", name: "רכב", available: 45, inUse: 15, pending: 1, overdue: 0 },
-    {
-      id: "6",
-      name: "שלישות",
-      available: 190,
-      inUse: 15,
-      pending: 0,
-      overdue: 0,
-    },
-  ];
+  });
+
+  if (depts.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>סטטוס מחלקות</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmptyState
+            icon={Building2}
+            title="אין מחלקות"
+            description="הוסף מחלקות כדי להתחיל"
+            action={
+              <Link href="/super-admin/departments/new">
+                <Button>
+                  <Plus className="w-4 h-4" />
+                  הוסף מחלקה
+                </Button>
+              </Link>
+            }
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -108,9 +119,10 @@ async function DepartmentOverview() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {departments.map((dept) => (
-            <div
+          {depts.map((dept) => (
+            <Link
               key={dept.id}
+              href={`/dashboard/departments/${dept.id}`}
               className="flex items-center justify-between p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -120,31 +132,11 @@ async function DepartmentOverview() {
                 <div>
                   <p className="font-medium text-slate-900">{dept.name}</p>
                   <p className="text-sm text-slate-500">
-                    {dept.available + dept.inUse} פריטים
+                    {dept.itemTypes?.length || 0} סוגי פריטים
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <p className="text-lg font-semibold text-green-600">
-                    {dept.available}
-                  </p>
-                  <p className="text-xs text-slate-500">זמין</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-semibold text-blue-600">
-                    {dept.inUse}
-                  </p>
-                  <p className="text-xs text-slate-500">בשימוש</p>
-                </div>
-                {dept.pending > 0 && (
-                  <Badge variant="warning">{dept.pending} ממתין</Badge>
-                )}
-                {dept.overdue > 0 && (
-                  <Badge variant="destructive">{dept.overdue} באיחור</Badge>
-                )}
-              </div>
-            </div>
+            </Link>
           ))}
         </div>
       </CardContent>
@@ -153,41 +145,32 @@ async function DepartmentOverview() {
 }
 
 async function RecentRequests() {
-  // TODO: Replace with actual data
-  const requests = [
-    {
-      id: "1",
-      requester: "יוסי כהן",
-      item: "מכשיר קשר",
-      department: "קשר",
-      status: "submitted",
-      time: "לפני 5 דקות",
+  const recentRequests = await db.query.requests.findMany({
+    limit: 5,
+    orderBy: (requests, { desc }) => [desc(requests.createdAt)],
+    with: {
+      requester: true,
+      itemType: true,
+      department: true,
     },
-    {
-      id: "2",
-      requester: "דנה לוי",
-      item: 'רובה M16 (3 יח")',
-      department: "נשק",
-      status: "approved",
-      time: "לפני 15 דקות",
-    },
-    {
-      id: "3",
-      requester: "אבי מזרחי",
-      item: "מחשב נייד",
-      department: "לוגיסטיקה",
-      status: "ready_for_pickup",
-      time: "לפני 30 דקות",
-    },
-    {
-      id: "4",
-      requester: "שרה גולן",
-      item: 'סוללות (20 יח")',
-      department: "אפסנאות",
-      status: "handed_over",
-      time: "לפני שעה",
-    },
-  ];
+  });
+
+  if (recentRequests.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>בקשות אחרונות</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmptyState
+            icon={FileText}
+            title="אין בקשות"
+            description="עדיין לא הוגשו בקשות במערכת"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -202,9 +185,10 @@ async function RecentRequests() {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {requests.map((request) => (
-            <div
+          {recentRequests.map((request) => (
+            <Link
               key={request.id}
+              href={`/dashboard/requests/${request.id}`}
               className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -213,20 +197,17 @@ async function RecentRequests() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-900">
-                    {request.item}
+                    {request.itemType?.name || "פריט"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {request.requester} • {request.department}
+                    {request.requester?.firstName} {request.requester?.lastName} • {request.department?.name}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">{request.time}</span>
-                <Badge className={getStatusColor(request.status)}>
-                  {getStatusLabel(request.status)}
-                </Badge>
-              </div>
-            </div>
+              <Badge className={getStatusColor(request.status)}>
+                {getStatusLabel(request.status)}
+              </Badge>
+            </Link>
           ))}
         </div>
       </CardContent>
@@ -235,31 +216,17 @@ async function RecentRequests() {
 }
 
 async function CriticalAlerts() {
-  // TODO: Replace with actual data
-  const alerts = [
-    {
-      id: "1",
-      type: "overdue",
-      message: 'מכשיר קשר #K-2341 באיחור של 3 ימים',
-      holder: "משה ישראלי",
-      department: "קשר",
+  // Get overdue requests
+  const overdueRequests = await db.query.requests.findMany({
+    where: eq(requests.status, "overdue"),
+    limit: 5,
+    with: {
+      requester: true,
+      itemType: true,
     },
-    {
-      id: "2",
-      type: "low_stock",
-      message: 'מלאי סוללות AA נמוך (5 יח")',
-      department: "אפסנאות",
-    },
-    {
-      id: "3",
-      type: "overdue",
-      message: 'מחשב נייד #L-1122 באיחור של יום',
-      holder: "רותי כהן",
-      department: "לוגיסטיקה",
-    },
-  ];
+  });
 
-  if (alerts.length === 0) {
+  if (overdueRequests.length === 0) {
     return null;
   }
 
@@ -273,31 +240,24 @@ async function CriticalAlerts() {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {alerts.map((alert) => (
-            <div
-              key={alert.id}
-              className="flex items-start gap-3 p-3 rounded-lg bg-white border border-red-100"
+          {overdueRequests.map((req) => (
+            <Link
+              key={req.id}
+              href={`/dashboard/requests/${req.id}`}
+              className="flex items-start gap-3 p-3 rounded-lg bg-white border border-red-100 hover:border-red-200 transition-colors"
             >
               <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                {alert.type === "overdue" ? (
-                  <Clock className="w-4 h-4 text-red-600" />
-                ) : (
-                  <Package className="w-4 h-4 text-red-600" />
-                )}
+                <Package className="w-4 h-4 text-red-600" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-900">
-                  {alert.message}
+                  {req.itemType?.name} באיחור
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {alert.holder && `${alert.holder} • `}
-                  {alert.department}
+                  {req.requester?.firstName} {req.requester?.lastName}
                 </p>
               </div>
-              <Button size="sm" variant="outline" className="shrink-0">
-                טפל
-              </Button>
-            </div>
+            </Link>
           ))}
         </div>
       </CardContent>
@@ -368,4 +328,3 @@ export function HQDashboard({ user }: HQDashboardProps) {
     </div>
   );
 }
-
