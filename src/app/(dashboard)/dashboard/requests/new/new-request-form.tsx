@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createRequest } from "@/actions/requests";
-import { Package, Clock, FileText } from "lucide-react";
+import { Package, Clock, Calendar } from "lucide-react";
 
 interface Department {
   id: string;
@@ -38,9 +38,18 @@ export function NewRequestForm({
   const [urgency, setUrgency] = useState<"immediate" | "scheduled">("immediate");
   const [purpose, setPurpose] = useState("");
   const [notes, setNotes] = useState("");
+  
+  // תאריכים
+  const [pickupDate, setPickupDate] = useState(""); // תאריך איסוף (למתוזמן)
+  const [returnDate, setReturnDate] = useState(""); // תאריך החזרה מתוכנן
 
   const availableItems = departmentId ? itemsByDepartment[departmentId] || [] : [];
   const selectedItem = availableItems.find((i) => i.id === itemTypeId);
+
+  // מינימום תאריך - היום
+  const today = new Date().toISOString().split("T")[0];
+  // מינימום להחזרה - יום אחרי איסוף או היום
+  const minReturnDate = pickupDate || today;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +65,11 @@ export function NewRequestForm({
       return;
     }
 
+    if (urgency === "scheduled" && !pickupDate) {
+      setError("יש לבחור תאריך איסוף");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -66,6 +80,8 @@ export function NewRequestForm({
         urgency,
         purpose: purpose || undefined,
         notes: notes || undefined,
+        scheduledPickupAt: pickupDate ? new Date(pickupDate) : undefined,
+        scheduledReturnAt: returnDate ? new Date(returnDate) : undefined,
       });
 
       if (result.error) {
@@ -154,7 +170,10 @@ export function NewRequestForm({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setUrgency("immediate")}
+              onClick={() => {
+                setUrgency("immediate");
+                setPickupDate("");
+              }}
               className={`p-4 rounded-lg border-2 transition-colors ${
                 urgency === "immediate"
                   ? "border-emerald-500 bg-emerald-50"
@@ -184,7 +203,7 @@ export function NewRequestForm({
                   : "border-slate-200 hover:border-slate-300"
               }`}
             >
-              <FileText
+              <Calendar
                 className={`w-5 h-5 mx-auto mb-2 ${
                   urgency === "scheduled" ? "text-emerald-600" : "text-slate-400"
                 }`}
@@ -199,6 +218,55 @@ export function NewRequestForm({
               <p className="text-xs text-slate-500 mt-1">לתאריך עתידי</p>
             </button>
           </div>
+        </div>
+
+        {/* תאריך איסוף - רק למתוזמן */}
+        {urgency === "scheduled" && (
+          <div>
+            <label
+              htmlFor="pickupDate"
+              className="block text-sm font-medium text-slate-700 mb-1.5"
+            >
+              תאריך איסוף
+            </label>
+            <Input
+              id="pickupDate"
+              type="date"
+              value={pickupDate}
+              min={today}
+              onChange={(e) => {
+                setPickupDate(e.target.value);
+                // אם תאריך החזרה לפני תאריך איסוף, אפס אותו
+                if (returnDate && e.target.value > returnDate) {
+                  setReturnDate("");
+                }
+              }}
+              required
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              מתי אתה מתכנן להגיע לקחת את הציוד?
+            </p>
+          </div>
+        )}
+
+        {/* תאריך החזרה מתוכנן - לשני הסוגים */}
+        <div>
+          <label
+            htmlFor="returnDate"
+            className="block text-sm font-medium text-slate-700 mb-1.5"
+          >
+            תאריך החזרה מתוכנן (אופציונלי)
+          </label>
+          <Input
+            id="returnDate"
+            type="date"
+            value={returnDate}
+            min={minReturnDate}
+            onChange={(e) => setReturnDate(e.target.value)}
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            מתי אתה מתכנן להחזיר את הציוד?
+          </p>
         </div>
 
         <div>
@@ -251,4 +319,3 @@ export function NewRequestForm({
     </form>
   );
 }
-
