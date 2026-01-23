@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,10 @@ import { Package, Clock, Calendar } from "lucide-react";
 interface Department {
   id: string;
   name: string;
+  allowImmediate: boolean;
+  allowScheduled: boolean;
+  operatingHoursStart: string;
+  operatingHoursEnd: string;
 }
 
 interface Item {
@@ -22,6 +26,20 @@ interface Item {
 interface NewRequestFormProps {
   departments: Department[];
   itemsByDepartment: Record<string, Item[]>;
+}
+
+// Generate time slots based on operating hours
+function generateTimeSlots(startHour: string, endHour: string): string[] {
+  const slots: string[] = [];
+  const [startH] = startHour.split(":").map(Number);
+  const [endH] = endHour.split(":").map(Number);
+
+  for (let hour = startH; hour < endH; hour++) {
+    slots.push(`${hour.toString().padStart(2, "0")}:00`);
+    slots.push(`${hour.toString().padStart(2, "0")}:30`);
+  }
+
+  return slots;
 }
 
 export function NewRequestForm({
@@ -38,13 +56,24 @@ export function NewRequestForm({
   const [urgency, setUrgency] = useState<"immediate" | "scheduled">("immediate");
   const [purpose, setPurpose] = useState("");
   const [notes, setNotes] = useState("");
-  
-  // תאריכים
-  const [pickupDate, setPickupDate] = useState(""); // תאריך איסוף (למתוזמן)
-  const [returnDate, setReturnDate] = useState(""); // תאריך החזרה מתוכנן
+
+  // תאריכים ושעות
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  const [returnDate, setReturnDate] = useState("");
 
   const availableItems = departmentId ? itemsByDepartment[departmentId] || [] : [];
   const selectedItem = availableItems.find((i) => i.id === itemTypeId);
+  const selectedDepartment = departments.find((d) => d.id === departmentId);
+
+  // Generate time slots for selected department
+  const timeSlots = useMemo(() => {
+    if (!selectedDepartment) return [];
+    return generateTimeSlots(
+      selectedDepartment.operatingHoursStart,
+      selectedDepartment.operatingHoursEnd
+    );
+  }, [selectedDepartment]);
 
   // מינימום תאריך - היום
   const today = new Date().toISOString().split("T")[0];
@@ -70,9 +99,20 @@ export function NewRequestForm({
       return;
     }
 
+    if (urgency === "scheduled" && !pickupTime) {
+      setError("יש לבחור שעת איסוף");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Combine date and time for scheduled pickup
+      let scheduledPickup: Date | undefined;
+      if (urgency === "scheduled" && pickupDate && pickupTime) {
+        scheduledPickup = new Date(`${pickupDate}T${pickupTime}:00`);
+      }
+
       const result = await createRequest({
         departmentId,
         itemTypeId,
@@ -80,7 +120,7 @@ export function NewRequestForm({
         urgency,
         purpose: purpose || undefined,
         notes: notes || undefined,
-        scheduledPickupAt: pickupDate ? new Date(pickupDate) : undefined,
+        scheduledPickupAt: scheduledPickup,
         scheduledReturnAt: returnDate ? new Date(returnDate) : undefined,
       });
 
@@ -113,11 +153,33 @@ export function NewRequestForm({
           onChange={(e) => {
             setDepartmentId(e.target.value);
             setItemTypeId("");
+            setPickupTime("");
           }}
           options={departments.map((d) => ({ value: d.id, label: d.name }))}
           placeholder="בחר מחלקה"
           required
         />
+
+        {selectedDepartment && (
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 text-sm">
+            <p className="text-blue-800">
+              <strong>שעות פעילות:</strong>{" "}
+              {selectedDepartment.operatingHoursStart} - {selectedDepartment.operatingHoursEnd}
+            </p>
+            <div className="flex gap-2 mt-1">
+              {selectedDepartment.allowImmediate && (
+                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                  מיידי ✓
+                </span>
+              )}
+              {selectedDepartment.allowScheduled && (
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                  מתוזמן ✓
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <Select
           id="item"
@@ -173,11 +235,17 @@ export function NewRequestForm({
               onClick={() => {
                 setUrgency("immediate");
                 setPickupDate("");
+                setPickupTime("");
               }}
+              disabled={selectedDepartment && !selectedDepartment.allowImmediate}
               className={`p-4 rounded-lg border-2 transition-colors ${
                 urgency === "immediate"
                   ? "border-emerald-500 bg-emerald-50"
                   : "border-slate-200 hover:border-slate-300"
+              } ${
+                selectedDepartment && !selectedDepartment.allowImmediate
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
               }`}
             >
               <Clock
@@ -197,10 +265,15 @@ export function NewRequestForm({
             <button
               type="button"
               onClick={() => setUrgency("scheduled")}
+              disabled={selectedDepartment && !selectedDepartment.allowScheduled}
               className={`p-4 rounded-lg border-2 transition-colors ${
                 urgency === "scheduled"
                   ? "border-emerald-500 bg-emerald-50"
                   : "border-slate-200 hover:border-slate-300"
+              } ${
+                selectedDepartment && !selectedDepartment.allowScheduled
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
               }`}
             >
               <Calendar
@@ -220,36 +293,64 @@ export function NewRequestForm({
           </div>
         </div>
 
-        {/* תאריך איסוף - רק למתוזמן */}
+        {/* תאריך ושעת איסוף - רק למתוזמן */}
         {urgency === "scheduled" && (
-          <div>
-            <label
-              htmlFor="pickupDate"
-              className="block text-sm font-medium text-slate-700 mb-1.5"
-            >
-              תאריך איסוף
-            </label>
-            <Input
-              id="pickupDate"
-              type="date"
-              value={pickupDate}
-              min={today}
-              onChange={(e) => {
-                setPickupDate(e.target.value);
-                // אם תאריך החזרה לפני תאריך איסוף, אפס אותו
-                if (returnDate && e.target.value > returnDate) {
-                  setReturnDate("");
-                }
-              }}
-              required
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              מתי אתה מתכנן להגיע לקחת את הציוד?
-            </p>
+          <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <h4 className="font-medium text-slate-900">בחירת מועד איסוף</h4>
+
+            <div>
+              <label
+                htmlFor="pickupDate"
+                className="block text-sm font-medium text-slate-700 mb-1.5"
+              >
+                תאריך איסוף
+              </label>
+              <Input
+                id="pickupDate"
+                type="date"
+                value={pickupDate}
+                min={today}
+                onChange={(e) => {
+                  setPickupDate(e.target.value);
+                  setPickupTime("");
+                  if (returnDate && e.target.value > returnDate) {
+                    setReturnDate("");
+                  }
+                }}
+                required
+              />
+            </div>
+
+            {pickupDate && timeSlots.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  שעת איסוף
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {timeSlots.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setPickupTime(slot)}
+                      className={`py-2 px-3 text-sm rounded-lg border transition-colors ${
+                        pickupTime === slot
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
+                          : "border-slate-200 hover:border-slate-300 text-slate-700"
+                      }`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  בחר שעה מתוך שעות הפעילות של המחלקה
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* תאריך החזרה מתוכנן - לשני הסוגים */}
+        {/* תאריך החזרה מתוכנן */}
         <div>
           <label
             htmlFor="returnDate"

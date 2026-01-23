@@ -13,7 +13,12 @@ export default async function NewRequestPage() {
 
   const departmentsList = await db.query.departments.findMany({
     where: eq(departments.isActive, true),
-    columns: { id: true, name: true },
+    columns: {
+      id: true,
+      name: true,
+      allowImmediate: true,
+      allowScheduled: true,
+    },
     orderBy: (departments, { asc }) => [asc(departments.name)],
   });
 
@@ -34,6 +39,13 @@ export default async function NewRequestPage() {
     });
   }
 
+  // Map departments with operating hours (default 08:00-17:00)
+  const departmentsWithHours = departmentsList.map((dept) => ({
+    ...dept,
+    operatingHoursStart: "08:00",
+    operatingHoursEnd: "17:00",
+  }));
+
   return (
     <div>
       <PageHeader title="בקשה חדשה" description="הגשת בקשה להשאלת ציוד" />
@@ -41,7 +53,7 @@ export default async function NewRequestPage() {
       <Card className="max-w-2xl">
         <CardContent className="p-6">
           <NewRequestForm
-            departments={departmentsList}
+            departments={departmentsWithHours}
             itemsByDepartment={itemsByDepartment}
           />
         </CardContent>

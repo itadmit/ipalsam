@@ -21,6 +21,7 @@ import {
   Clock,
   Database,
   History,
+  Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
@@ -198,6 +199,12 @@ export function Sidebar({ user }: SidebarProps) {
       href: "/dashboard/loans",
       label: "השאלות פעילות",
       icon: Clock,
+      show: canAccessAdmin || isDeptCommander,
+    },
+    {
+      href: "/dashboard/schedule",
+      label: "לוח תורים",
+      icon: Calendar,
       show: canAccessAdmin || isDeptCommander,
     },
     {
