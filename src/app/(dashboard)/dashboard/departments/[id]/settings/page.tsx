@@ -7,30 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { DepartmentSettingsForm } from "./settings-form";
-
-async function getDepartment(id: string) {
-  // TODO: Fetch from DB
-  const departments: Record<string, {
-    id: string;
-    name: string;
-    description: string;
-    operatingHoursStart: string;
-    operatingHoursEnd: string;
-    allowImmediate: boolean;
-    allowScheduled: boolean;
-  }> = {
-    "1": {
-      id: "1",
-      name: "קשר",
-      description: "ציוד תקשורת ומכשירי קשר",
-      operatingHoursStart: "08:00",
-      operatingHoursEnd: "17:00",
-      allowImmediate: true,
-      allowScheduled: true,
-    },
-  };
-  return departments[id] || null;
-}
+import { db } from "@/db";
+import { departments } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function DepartmentSettingsPage({
   params,
@@ -52,11 +31,23 @@ export default async function DepartmentSettingsPage({
     redirect("/dashboard");
   }
 
-  const department = await getDepartment(id);
+  const department = await db.query.departments.findFirst({
+    where: eq(departments.id, id),
+  });
 
   if (!department) {
     notFound();
   }
+
+  const departmentData = {
+    id: department.id,
+    name: department.name,
+    description: department.description || "",
+    operatingHoursStart: "08:00", // TODO: Add to schema if needed
+    operatingHoursEnd: "17:00",
+    allowImmediate: department.allowImmediate,
+    allowScheduled: department.allowScheduled,
+  };
 
   return (
     <div>
@@ -75,10 +66,9 @@ export default async function DepartmentSettingsPage({
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">
-          <DepartmentSettingsForm department={department} />
+          <DepartmentSettingsForm department={departmentData} />
         </CardContent>
       </Card>
     </div>
   );
 }
-
