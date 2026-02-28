@@ -70,8 +70,8 @@ async function RecentAuditLogs() {
     {
       id: "2",
       user: "ניסם חדד",
-      action: "אישור בקשה",
-      details: "בקשה #1234 אושרה",
+      action: "אישור השאלה",
+      details: "השאלה #1234 אושרה",
       time: "לפני 15 דקות",
     },
     {

@@ -155,7 +155,7 @@ export function QuickExportButton({ type, label }: QuickExportButtonProps) {
           csvContent = "שם פרטי,שם משפחה,טלפון,תפקיד,מחלקה\nיוגב,אביטן,0542284283,סופר אדמין,\n";
           break;
         case "requests":
-          csvContent = "מבקש,פריט,כמות,סטטוס,תאריך\nיוסי כהן,מכשיר קשר,1,אושר,22/01/2026\n";
+          csvContent = "חייל מבקש,פריט,כמות,סטטוס,תאריך\nיוסי כהן,מכשיר קשר,1,אושר,22/01/2026\n";
           break;
         case "audit":
           csvContent = "תאריך,משתמש,פעולה,פרטים\n22/01/2026 09:00,יוגב אביטן,התחברות,\n";

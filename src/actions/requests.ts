@@ -37,9 +37,13 @@ export async function createRequest(data: CreateRequestFormData) {
     }
   }
 
+  const { randomUUID } = await import("crypto");
+  const requestGroupId = randomUUID();
+
   const [newRequest] = await db
     .insert(requests)
     .values({
+      requestGroupId,
       requesterId: session.user.id,
       departmentId: data.departmentId,
       itemTypeId: data.itemTypeId,
@@ -190,7 +194,7 @@ export async function approveRequest(requestId: string, notes?: string) {
   });
 
   if (!request) {
-    return { error: "בקשה לא נמצאה" };
+    return { error: "השאלה לא נמצאה" };
   }
 
   const userRole = session.user.role as SessionUser["role"];
@@ -201,7 +205,7 @@ export async function approveRequest(requestId: string, notes?: string) {
   }
 
   if (request.status !== "submitted") {
-    return { error: "לא ניתן לאשר בקשה זו" };
+    return { error: "לא ניתן לאשר השאלה זו" };
   }
 
   // Check availability again
@@ -248,7 +252,7 @@ export async function rejectRequest(requestId: string, reason: string) {
   });
 
   if (!request) {
-    return { error: "בקשה לא נמצאה" };
+    return { error: "השאלה לא נמצאה" };
   }
 
   const userRole = session.user.role as SessionUser["role"];
@@ -259,7 +263,7 @@ export async function rejectRequest(requestId: string, reason: string) {
   }
 
   if (request.status !== "submitted") {
-    return { error: "לא ניתן לדחות בקשה זו" };
+    return { error: "לא ניתן לדחות השאלה זו" };
   }
 
   await db
@@ -304,7 +308,7 @@ export async function handoverItem(
   });
 
   if (!request) {
-    return { error: "בקשה לא נמצאה" };
+    return { error: "השאלה לא נמצאה" };
   }
 
   const userRole = session.user.role as SessionUser["role"];
@@ -315,7 +319,7 @@ export async function handoverItem(
   }
 
   if (request.status !== "approved" && request.status !== "ready_for_pickup") {
-    return { error: "לא ניתן למסור בקשה זו" };
+    return { error: "לא ניתן למסור השאלה זו" };
   }
 
   // Update inventory
@@ -390,6 +394,113 @@ export async function handoverItem(
   return { success: true };
 }
 
+export async function returnGroup(groupKey: string) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return { error: "לא מחובר" };
+  }
+
+  let groupRequests = await db.query.requests.findMany({
+    where: and(
+      eq(requests.requestGroupId, groupKey),
+      eq(requests.status, "handed_over")
+    ),
+    with: { itemType: true },
+  });
+
+  if (groupRequests.length === 0) {
+    const single = await db.query.requests.findFirst({
+      where: and(eq(requests.id, groupKey), eq(requests.status, "handed_over")),
+      with: { itemType: true },
+    });
+    if (single) groupRequests = [single];
+  }
+
+  if (groupRequests.length === 0) {
+    return { error: "לא נמצאו השאלות להחזרה" };
+  }
+
+  const userRole = session.user.role as SessionUser["role"];
+  const userDeptId = session.user.departmentId;
+
+  for (const request of groupRequests) {
+    if (!canManageDepartment(userRole, userDeptId, request.departmentId)) {
+      return { error: "אין הרשאה" };
+    }
+  }
+
+  for (const request of groupRequests) {
+    if (request.itemType?.type === "quantity") {
+      await db
+        .update(itemTypes)
+        .set({
+          quantityAvailable: sql`${itemTypes.quantityAvailable} + ${request.quantity}`,
+          quantityInUse: sql`${itemTypes.quantityInUse} - ${request.quantity}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(itemTypes.id, request.itemTypeId));
+    } else if (request.itemUnitId) {
+      await db
+        .update(itemUnits)
+        .set({
+          status: "available",
+          currentHolderId: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(itemUnits.id, request.itemUnitId));
+    }
+
+    const [movement] = await db
+      .insert(movements)
+      .values({
+        itemTypeId: request.itemTypeId,
+        itemUnitId: request.itemUnitId,
+        requestId: request.id,
+        type: "return",
+        quantity: request.quantity,
+        toDepartmentId: request.departmentId,
+        fromUserId: request.requesterId,
+        executedById: session.user.id,
+      })
+      .returning();
+
+    await db.insert(signatures).values({
+      movementId: movement.id,
+      requestId: request.id,
+      userId: request.requesterId,
+      signatureType: "return",
+      confirmed: true,
+      pin: null,
+    });
+
+    await db
+      .update(requests)
+      .set({
+        status: "returned",
+        returnedAt: new Date(),
+        receivedById: session.user.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, request.id));
+
+    await db.insert(auditLogs).values({
+      userId: session.user.id,
+      action: "return_item",
+      entityType: "request",
+      entityId: request.id,
+      newValues: {},
+    });
+  }
+
+  revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+
+  return { success: true };
+}
+
 export async function returnItem(
   requestId: string,
   signature: { confirmed: boolean; pin?: string },
@@ -407,7 +518,7 @@ export async function returnItem(
   });
 
   if (!request) {
-    return { error: "בקשה לא נמצאה" };
+    return { error: "השאלה לא נמצאה" };
   }
 
   const userRole = session.user.role as SessionUser["role"];
@@ -418,7 +529,7 @@ export async function returnItem(
   }
 
   if (request.status !== "handed_over") {
-    return { error: "לא ניתן להחזיר בקשה זו" };
+    return { error: "לא ניתן להחזיר השאלה זו" };
   }
 
   // Update inventory

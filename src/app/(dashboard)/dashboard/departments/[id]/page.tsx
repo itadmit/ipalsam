@@ -129,7 +129,7 @@ export default async function DepartmentDetailPage({
             iconClassName="bg-blue-50"
           />
           <StatCard
-            title="בקשות ממתינות"
+            title="השאלות ממתינות"
             value={pendingRequestCount?.count || 0}
             icon={FileText}
             iconClassName="bg-amber-50"
@@ -159,7 +159,7 @@ export default async function DepartmentDetailPage({
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-slate-500 mb-1">סוגי בקשות</p>
+                <p className="text-sm text-slate-500 mb-1">סוגי השאלות</p>
                 <div className="flex gap-2">
                   {department.allowImmediate && (
                     <Badge variant="success">מיידי</Badge>
@@ -229,7 +229,7 @@ export default async function DepartmentDetailPage({
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                בקשות אחרונות
+                השאלות אחרונות
               </CardTitle>
               <Link href={`/dashboard/requests?dept=${id}`}>
                 <Button variant="ghost" size="sm">
@@ -241,8 +241,8 @@ export default async function DepartmentDetailPage({
               {recentRequests.length === 0 ? (
                 <EmptyState
                   icon={FileText}
-                  title="אין בקשות"
-                  description="לא נמצאו בקשות במחלקה זו"
+                  title="אין השאלות"
+                  description="לא נמצאו השאלות במחלקה זו"
                 />
               ) : (
                 <div className="space-y-3">
@@ -254,7 +254,7 @@ export default async function DepartmentDetailPage({
                     >
                       <div>
                         <p className="font-medium">
-                          {req.requester?.firstName} {req.requester?.lastName}
+                          {req.recipientName || `${req.requester?.firstName || ""} ${req.requester?.lastName || ""}`.trim() || "-"}
                         </p>
                         <p className="text-sm text-slate-500">{req.itemType?.name}</p>
                       </div>

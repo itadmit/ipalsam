@@ -63,8 +63,8 @@ export default async function HandoverDetailPage({
   const requestData = {
     id: request.id,
     requester: {
-      name: `${request.requester?.firstName} ${request.requester?.lastName}`,
-      phone: request.requester?.phone || "",
+      name: request.recipientName || `${request.requester?.firstName || ""} ${request.requester?.lastName || ""}`.trim() || "-",
+      phone: request.recipientPhone || request.requester?.phone || "",
     },
     item: {
       name: request.itemType?.name || "",
@@ -84,7 +84,7 @@ export default async function HandoverDetailPage({
     <div>
       <PageHeader
         title="ביצוע מסירה"
-        description={`בקשה #${request.id.slice(0, 8)}`}
+        description={`השאלה #${request.id.slice(0, 8)}`}
         actions={
           <Link href="/dashboard/handover">
             <Button variant="outline">
@@ -138,7 +138,7 @@ export default async function HandoverDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
-                פרטי הבקשה
+                פרטי ההשאלה
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

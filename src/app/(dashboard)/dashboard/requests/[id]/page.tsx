@@ -55,7 +55,7 @@ export default async function RequestDetailPage({
   return (
     <div>
       <PageHeader
-        title={`בקשה #${request.id.slice(0, 8)}`}
+        title={`השאלה #${request.id.slice(0, 8)}`}
         description={`${request.itemType?.name || "-"} • ${request.department?.name || "-"}`}
         actions={
           <Link href="/dashboard/requests">
@@ -75,7 +75,7 @@ export default async function RequestDetailPage({
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">סטטוס הבקשה</p>
+                  <p className="text-sm text-slate-500 mb-1">סטטוס ההשאלה</p>
                   <Badge className={`${getStatusColor(request.status)} text-lg px-4 py-1`}>
                     {getStatusLabel(request.status)}
                   </Badge>
@@ -132,7 +132,7 @@ export default async function RequestDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                פרטי הבקשה
+                פרטי ההשאלה
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -178,7 +178,7 @@ export default async function RequestDetailPage({
                     <FileText className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <p className="font-medium">הבקשה הוגשה</p>
+                    <p className="font-medium">ההשאלה הוגשה</p>
                     <p className="text-sm text-slate-500">
                       {formatDateTime(request.createdAt)}
                     </p>
@@ -198,7 +198,7 @@ export default async function RequestDetailPage({
                     </div>
                     <div>
                       <p className="font-medium">
-                        {request.status === "rejected" ? "הבקשה נדחתה" : "הבקשה אושרה"}
+                        {request.status === "rejected" ? "ההשאלה נדחתה" : "ההשאלה אושרה"}
                       </p>
                       <p className="text-sm text-slate-500">
                         {formatDateTime(request.approvedAt)}
@@ -247,26 +247,22 @@ export default async function RequestDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" />
-                פרטי המבקש
+                פרטי החייל המבקש
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm text-slate-500">שם</p>
                 <p className="font-medium">
-                  {request.requester?.firstName} {request.requester?.lastName}
+                  {request.recipientName || (request.requester ? `${request.requester.firstName || ""} ${request.requester.lastName || ""}`.trim() : "-")}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">טלפון</p>
-                <p className="font-medium" dir="ltr">{request.requester?.phone}</p>
+                <p className="font-medium" dir="ltr">
+                  {request.recipientPhone || request.requester?.phone || "-"}
+                </p>
               </div>
-              {request.requester?.email && (
-                <div>
-                  <p className="text-sm text-slate-500">אימייל</p>
-                  <p className="font-medium">{request.requester.email}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
 

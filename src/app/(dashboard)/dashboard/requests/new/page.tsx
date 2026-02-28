@@ -48,7 +48,7 @@ export default async function NewRequestPage() {
 
   return (
     <div>
-      <PageHeader title="בקשה חדשה" description="הגשת בקשה להשאלת ציוד" />
+      <PageHeader title="השאלה חדשה" description="הגשת השאלה לציוד" />
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">

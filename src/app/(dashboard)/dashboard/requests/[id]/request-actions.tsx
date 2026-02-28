@@ -74,7 +74,7 @@ export function RequestApprovalActions({ requestId, status }: RequestActionsProp
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-red-600">דחיית בקשה</DialogTitle>
+            <DialogTitle className="text-red-600">דחיית השאלה</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <Input
@@ -97,7 +97,7 @@ export function RequestApprovalActions({ requestId, status }: RequestActionsProp
               disabled={!rejectionReason.trim()}
             >
               <XCircle className="w-4 h-4" />
-              דחה בקשה
+              דחה השאלה
             </Button>
           </DialogFooter>
         </DialogContent>

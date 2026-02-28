@@ -96,7 +96,7 @@ export function DeleteItemButton({ itemId, itemName }: DeleteItemButtonProps) {
                 <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                   <p className="text-red-800 font-medium">פעולה בלתי הפיכה!</p>
                   <p className="text-sm text-red-700 mt-1">
-                    מחיקת הפריט תמחק גם את כל היחידות, התנועות והבקשות הקשורות אליו.
+                    מחיקת הפריט תמחק גם את כל היחידות, התנועות וההשאלות הקשורות אליו.
                   </p>
                 </div>
                 <div>

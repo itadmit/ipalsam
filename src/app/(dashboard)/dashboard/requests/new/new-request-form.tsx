@@ -232,7 +232,7 @@ export function NewRequestForm({
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-slate-900 flex items-center gap-2">
               <Package className="w-4 h-4" />
-              פריטים בבקשה
+              פריטים בהשאלה
             </h4>
             <Button
               type="button"
@@ -548,7 +548,7 @@ export function NewRequestForm({
           ביטול
         </Button>
         <Button type="submit" className="flex-1" loading={loading}>
-          שלח בקשה
+          שלח השאלה
         </Button>
       </div>
     </form>

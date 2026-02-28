@@ -47,14 +47,14 @@ async function RequestsTable({ searchParams, user }: { searchParams: SearchParam
     allRequests = allRequests.filter((r) => r.departmentId === user.departmentId);
   }
 
-  // Filter by search
+  // Filter by search (חייל מבקש = recipientName)
   if (searchParams.q) {
     const query = searchParams.q.toLowerCase();
     allRequests = allRequests.filter(
       (r) =>
         r.itemType?.name?.toLowerCase().includes(query) ||
-        r.requester?.firstName?.toLowerCase().includes(query) ||
-        r.requester?.lastName?.toLowerCase().includes(query)
+        (r.recipientName || "").toLowerCase().includes(query) ||
+        (r.recipientPhone || "").includes(query)
     );
   }
 
@@ -63,17 +63,31 @@ async function RequestsTable({ searchParams, user }: { searchParams: SearchParam
     allRequests = allRequests.filter((r) => r.status === searchParams.status);
   }
 
-  if (allRequests.length === 0) {
+  // Group by requestGroupId (אותה השאלה = בקשה אחת)
+  const groupKey = (r: (typeof allRequests)[0]) => r.requestGroupId ?? r.id;
+  const grouped = new Map<string, (typeof allRequests)[0][]>();
+  for (const r of allRequests) {
+    const key = groupKey(r);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(r);
+  }
+  const displayGroups = Array.from(grouped.entries()).map(([key, reqs]) => ({
+    groupKey: key,
+    requests: reqs,
+    first: reqs[0],
+  }));
+
+  if (displayGroups.length === 0) {
     return (
       <EmptyState
         icon={FileText}
-        title="אין בקשות"
-        description={user.role === "soldier" ? "עדיין לא הגשת בקשות" : "אין בקשות במערכת"}
+        title="אין השאלות"
+        description={user.role === "soldier" ? "עדיין לא הגשת השאלות" : "אין השאלות במערכת"}
         action={
           <Link href="/dashboard/requests/new">
             <Button>
               <Plus className="w-4 h-4" />
-              בקשה חדשה
+              השאלה חדשה
             </Button>
           </Link>
         }
@@ -86,10 +100,9 @@ async function RequestsTable({ searchParams, user }: { searchParams: SearchParam
       <Table>
         <TableHeader>
           <TableRow className="bg-slate-50">
-            <TableHead>מבקש</TableHead>
-            <TableHead>פריט</TableHead>
+            <TableHead>חייל מבקש</TableHead>
+            <TableHead>פריטים</TableHead>
             <TableHead>מחלקה</TableHead>
-            <TableHead>כמות</TableHead>
             <TableHead>דחיפות</TableHead>
             <TableHead>סטטוס</TableHead>
             <TableHead>תאריך</TableHead>
@@ -97,36 +110,44 @@ async function RequestsTable({ searchParams, user }: { searchParams: SearchParam
           </TableRow>
         </TableHeader>
         <TableBody>
-          {allRequests.map((request) => (
-            <TableRow key={request.id}>
+          {displayGroups.map(({ groupKey, requests: reqs, first }) => (
+            <TableRow key={groupKey}>
               <TableCell>
                 <div>
                   <p className="font-medium">
-                    {request.requester?.firstName} {request.requester?.lastName}
+                    {(first.recipientName || (first.requester ? `${first.requester.firstName || ""} ${first.requester.lastName || ""}`.trim() : "")) || "-"}
                   </p>
                   <p className="text-sm text-slate-500" dir="ltr">
-                    {request.requester?.phone}
+                    {first.recipientPhone || first.requester?.phone || "-"}
                   </p>
                 </div>
               </TableCell>
-              <TableCell>{request.itemType?.name || "-"}</TableCell>
-              <TableCell>{request.department?.name || "-"}</TableCell>
-              <TableCell>{request.quantity}</TableCell>
               <TableCell>
-                <Badge variant={request.urgency === "immediate" ? "destructive" : "info"}>
-                  {request.urgency === "immediate" ? "מיידי" : "מתוזמן"}
+                <div className="space-y-0.5">
+                  {reqs.map((r) => (
+                    <p key={r.id} className="text-sm">
+                      {r.itemType?.name}
+                      {r.quantity > 1 && ` (${r.quantity} יח')`}
+                    </p>
+                  ))}
+                </div>
+              </TableCell>
+              <TableCell>{first.department?.name || "-"}</TableCell>
+              <TableCell>
+                <Badge variant={first.urgency === "immediate" ? "destructive" : "info"}>
+                  {first.urgency === "immediate" ? "מיידי" : "מתוזמן"}
                 </Badge>
               </TableCell>
               <TableCell>
-                <Badge className={getStatusColor(request.status)}>
-                  {getStatusLabel(request.status)}
+                <Badge className={getStatusColor(first.status)}>
+                  {getStatusLabel(first.status)}
                 </Badge>
               </TableCell>
               <TableCell className="text-sm text-slate-500">
-                {formatDateTime(request.createdAt)}
+                {formatDateTime(first.createdAt)}
               </TableCell>
               <TableCell>
-                <Link href={`/dashboard/requests/${request.id}`}>
+                <Link href={`/dashboard/requests/${first.id}`}>
                   <Button variant="ghost" size="icon">
                     <Eye className="w-4 h-4" />
                   </Button>
@@ -153,13 +174,13 @@ export default async function RequestsPage({
   return (
     <div>
       <PageHeader
-        title="בקשות"
-        description="ניהול בקשות לציוד"
+        title="השאלות"
+        description="ניהול השאלות לציוד"
         actions={
           <Link href="/dashboard/requests/new">
             <Button>
               <Plus className="w-4 h-4" />
-              בקשה חדשה
+              השאלה חדשה
             </Button>
           </Link>
         }
@@ -169,7 +190,7 @@ export default async function RequestsPage({
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <SearchBar
-              placeholder="חיפוש לפי שם או פריט..."
+              placeholder="חיפוש לפי חייל מבקש או פריט..."
               className="sm:w-80"
             />
           </div>

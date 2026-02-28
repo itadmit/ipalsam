@@ -367,7 +367,7 @@ export async function deleteItemType(itemTypeId: string) {
     return { error: "אין הרשאה" };
   }
 
-  // בדיקה שאין בקשות פעילות
+  // בדיקה שאין השאלות פעילות
   const activeRequests = await db.query.requests.findMany({
     where: and(
       eq(requests.itemTypeId, itemTypeId),
@@ -383,7 +383,7 @@ export async function deleteItemType(itemTypeId: string) {
 
   if (activeRequests.length > 0) {
     return {
-      error: `לא ניתן למחוק - יש ${activeRequests.length} בקשות פעילות. סגור אותן קודם.`,
+      error: `לא ניתן למחוק - יש ${activeRequests.length} השאלות פעילות. סגור אותן קודם.`,
     };
   }
 

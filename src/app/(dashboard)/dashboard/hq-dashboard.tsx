@@ -58,7 +58,7 @@ async function DashboardStats() {
         iconClassName="bg-blue-50"
       />
       <StatCard
-        title="בקשות ממתינות"
+        title="השאלות ממתינות"
         value={stats.pendingRequests}
         icon={FileText}
         iconClassName="bg-amber-50"
@@ -159,13 +159,13 @@ async function RecentRequests() {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>בקשות אחרונות</CardTitle>
+          <CardTitle>השאלות אחרונות</CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyState
             icon={FileText}
-            title="אין בקשות"
-            description="עדיין לא הוגשו בקשות במערכת"
+            title="אין השאלות"
+            description="עדיין לא הוגשו השאלות במערכת"
           />
         </CardContent>
       </Card>
@@ -175,7 +175,7 @@ async function RecentRequests() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>בקשות אחרונות</CardTitle>
+        <CardTitle>השאלות אחרונות</CardTitle>
         <Link href="/dashboard/requests">
           <Button variant="ghost" size="sm">
             הצג הכל
@@ -200,7 +200,7 @@ async function RecentRequests() {
                     {request.itemType?.name || "פריט"}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {request.requester?.firstName} {request.requester?.lastName} • {request.department?.name}
+                    {request.recipientName || `${request.requester?.firstName || ""} ${request.requester?.lastName || ""}`.trim() || "-"} • {request.department?.name}
                   </p>
                 </div>
               </div>
@@ -254,7 +254,7 @@ async function CriticalAlerts() {
                   {req.itemType?.name} באיחור
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {req.requester?.firstName} {req.requester?.lastName}
+                  {req.recipientName || `${req.requester?.firstName || ""} ${req.requester?.lastName || ""}`.trim() || "-"}
                 </p>
               </div>
             </Link>

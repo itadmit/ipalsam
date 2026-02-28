@@ -185,7 +185,7 @@ export function Sidebar({ user }: SidebarProps) {
     },
     {
       href: "/dashboard/requests",
-      label: "בקשות",
+      label: "השאלות",
       icon: FileText,
       show: true,
     },

@@ -172,8 +172,8 @@ export function NotificationSettingsForm({
         </div>
         <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
           <div>
-            <p className="font-medium">התראות בקשות חדשות</p>
-            <p className="text-sm text-slate-500">שלח התראה למפקד מחלקה על בקשה חדשה</p>
+            <p className="font-medium">התראות השאלות חדשות</p>
+            <p className="text-sm text-slate-500">שלח התראה למפקד מחלקה על השאלה חדשה</p>
           </div>
           <input
             type="checkbox"
@@ -574,7 +574,7 @@ export function SystemResetAction() {
                     <p className="text-red-800 font-medium">פעולה בלתי הפיכה!</p>
                   </div>
                   <p className="text-sm text-red-700">
-                    כל הנתונים יימחקו לצמיתות: משתמשים, מחלקות, ציוד, בקשות, תנועות, חתימות.
+                    כל הנתונים יימחקו לצמיתות: משתמשים, מחלקות, ציוד, השאלות, תנועות, חתימות.
                   </p>
                 </div>
                 <div>

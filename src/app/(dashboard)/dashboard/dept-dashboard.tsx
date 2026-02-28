@@ -30,7 +30,7 @@ async function DeptStats({ departmentId }: { departmentId: string | null }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="סה״כ פריטים" value={0} icon={Package} />
         <StatCard title="בשימוש" value={0} icon={Users} iconClassName="bg-blue-50" />
-        <StatCard title="בקשות ממתינות" value={0} icon={FileText} iconClassName="bg-amber-50" />
+        <StatCard title="השאלות ממתינות" value={0} icon={FileText} iconClassName="bg-amber-50" />
         <StatCard title="השאלות באיחור" value={0} icon={Clock} iconClassName="bg-red-50" />
       </div>
     );
@@ -70,7 +70,7 @@ async function DeptStats({ departmentId }: { departmentId: string | null }) {
         iconClassName="bg-blue-50"
       />
       <StatCard
-        title="בקשות ממתינות"
+        title="השאלות ממתינות"
         value={pendingCount?.count || 0}
         icon={FileText}
         iconClassName="bg-amber-50"
@@ -92,14 +92,14 @@ async function PendingRequests({ departmentId }: { departmentId: string | null }
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            בקשות ממתינות לאישור
+            השאלות ממתינות לאישור
           </CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyState
             icon={FileText}
-            title="אין בקשות"
-            description="אין בקשות ממתינות לאישור"
+            title="אין השאלות"
+            description="אין השאלות ממתינות לאישור"
           />
         </CardContent>
       </Card>
@@ -121,7 +121,7 @@ async function PendingRequests({ departmentId }: { departmentId: string | null }
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="w-5 h-5" />
-          בקשות ממתינות לאישור
+          השאלות ממתינות לאישור
           {pendingRequests.length > 0 && (
             <Badge variant="warning">{pendingRequests.length}</Badge>
           )}
@@ -131,8 +131,8 @@ async function PendingRequests({ departmentId }: { departmentId: string | null }
         {pendingRequests.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="אין בקשות"
-            description="אין בקשות ממתינות לאישור"
+            title="אין השאלות"
+            description="אין השאלות ממתינות לאישור"
           />
         ) : (
           <div className="space-y-4">
@@ -145,10 +145,10 @@ async function PendingRequests({ departmentId }: { departmentId: string | null }
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-medium text-slate-900">
-                      {request.requester?.firstName} {request.requester?.lastName}
+                      {request.recipientName || `${request.requester?.firstName || ""} ${request.requester?.lastName || ""}`.trim() || "-"}
                     </p>
                     <p className="text-sm text-slate-500" dir="ltr">
-                      {request.requester?.phone}
+                      {request.recipientPhone || request.requester?.phone || "-"}
                     </p>
                   </div>
                   <Badge variant={request.urgency === "immediate" ? "destructive" : "info"}>
@@ -192,14 +192,24 @@ async function ActiveLoans({ departmentId }: { departmentId: string | null }) {
     );
   }
 
-  const activeLoans = await db.query.requests.findMany({
+  const activeLoansRaw = await db.query.requests.findMany({
     where: and(eq(requests.departmentId, departmentId), eq(requests.status, "handed_over")),
-    limit: 5,
+    limit: 10,
     with: {
       requester: true,
       itemType: true,
     },
   });
+
+  const loanGroups = new Map<string, typeof activeLoansRaw>();
+  for (const loan of activeLoansRaw) {
+    const key = loan.requestGroupId ?? loan.id;
+    if (!loanGroups.has(key)) loanGroups.set(key, []);
+    loanGroups.get(key)!.push(loan);
+  }
+  const activeLoans = Array.from(loanGroups.entries())
+    .slice(0, 5)
+    .map(([groupKey, loans]) => ({ groupKey, loans, first: loans[0] }));
 
   return (
     <Card>
@@ -224,23 +234,29 @@ async function ActiveLoans({ departmentId }: { departmentId: string | null }) {
           />
         ) : (
           <div className="space-y-3">
-            {activeLoans.map((loan) => (
+            {activeLoans.map(({ groupKey, loans, first }) => (
               <Link
-                key={loan.id}
-                href={`/dashboard/handover/${loan.id}/return`}
+                key={groupKey}
+                href={`/dashboard/handover/group/${groupKey}/return`}
                 className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
                     <span className="text-sm font-medium text-slate-600">
-                      {loan.requester?.firstName?.[0]}{loan.requester?.lastName?.[0]}
+                      {(first.recipientName || `${first.requester?.firstName || ""} ${first.requester?.lastName || ""}`.trim())
+                        .split(" ")
+                        .map((s) => s.charAt(0))
+                        .join("")
+                        .slice(0, 2) || "-"}
                     </span>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-900">
-                      {loan.requester?.firstName} {loan.requester?.lastName}
+                      {first.recipientName || `${first.requester?.firstName || ""} ${first.requester?.lastName || ""}`.trim() || "-"}
                     </p>
-                    <p className="text-xs text-slate-500">{loan.itemType?.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {loans.map((l) => l.itemType?.name).join(", ")}
+                    </p>
                   </div>
                 </div>
               </Link>
@@ -357,7 +373,7 @@ export function DeptDashboard({ user }: DeptDashboardProps) {
     <div>
       <PageHeader
         title={`שלום, ${user.firstName}`}
-        description="דשבורד מחלקה - ניהול מלאי ובקשות"
+        description="דשבורד מחלקה - ניהול מלאי והשאלות"
         actions={
           <div className="flex gap-2">
             <Link href="/dashboard/inventory/intake">

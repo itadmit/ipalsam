@@ -100,7 +100,7 @@ export default async function ReportsPage() {
           <div className="flex flex-wrap gap-4">
             <QuickExportButton type="inventory" label="ייצוא מלאי מלא (CSV)" />
             <QuickExportButton type="users" label="ייצוא משתמשים (CSV)" />
-            <QuickExportButton type="requests" label="ייצוא בקשות החודש (CSV)" />
+            <QuickExportButton type="requests" label="ייצוא השאלות החודש (CSV)" />
             <QuickExportButton type="audit" label="ייצוא Audit Log (CSV)" />
           </div>
         </CardContent>

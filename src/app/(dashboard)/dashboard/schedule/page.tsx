@@ -26,6 +26,8 @@ interface ScheduledRequest {
   scheduledPickupAt: Date;
   status: string;
   quantity: number;
+  recipientName: string | null;
+  recipientPhone: string | null;
   requester: { firstName: string; lastName: string; phone: string } | null;
   itemType: { name: string } | null;
 }
@@ -147,7 +149,7 @@ export default async function SchedulePage() {
             <EmptyState
               icon={Calendar}
               title="אין תורים מתוזמנים"
-              description="כרגע אין בקשות מתוזמנות להמתנה"
+              description="כרגע אין השאלות מתוזמנות להמתנה"
             />
           </CardContent>
         </Card>
@@ -188,10 +190,10 @@ export default async function SchedulePage() {
                           <div className="flex items-center gap-2">
                             <User className="w-4 h-4 text-slate-400" />
                             <span className="font-medium">
-                              {request.requester?.firstName} {request.requester?.lastName}
+                              {request.recipientName || `${request.requester?.firstName || ""} ${request.requester?.lastName || ""}`.trim() || "-"}
                             </span>
                             <span className="text-sm text-slate-500" dir="ltr">
-                              {request.requester?.phone}
+                              {request.recipientPhone || request.requester?.phone || "-"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">

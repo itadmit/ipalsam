@@ -41,8 +41,8 @@ export default async function HandoverPage() {
     orderBy: (requests, { desc }) => [desc(requests.approvedAt)],
   });
 
-  // Get items currently on loan (handed over)
-  const activeLoans = await db.query.requests.findMany({
+  // Get items currently on loan (handed over) - group by requestGroupId
+  const activeLoansRaw = await db.query.requests.findMany({
     where: eq(requests.status, "handed_over"),
     with: {
       requester: true,
@@ -50,6 +50,17 @@ export default async function HandoverPage() {
     },
     orderBy: (requests, { asc }) => [asc(requests.scheduledReturnAt)],
   });
+  const loanGroups = new Map<string, typeof activeLoansRaw>();
+  for (const loan of activeLoansRaw) {
+    const key = loan.requestGroupId ?? loan.id;
+    if (!loanGroups.has(key)) loanGroups.set(key, []);
+    loanGroups.get(key)!.push(loan);
+  }
+  const activeLoans = Array.from(loanGroups.entries()).map(([groupKey, loans]) => ({
+    groupKey,
+    loans,
+    first: loans[0],
+  }));
 
   return (
     <div>
@@ -82,8 +93,8 @@ export default async function HandoverPage() {
             {pendingHandovers.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title="אין בקשות ממתינות"
-                description="כל הבקשות שאושרו נמסרו"
+                title="אין השאלות ממתינות"
+                description="כל ההשאלות שאושרו נמסרו"
               />
             ) : (
               <div className="space-y-4">
@@ -99,10 +110,10 @@ export default async function HandoverPage() {
                         </div>
                         <div>
                           <p className="font-medium">
-                            {handover.requester?.firstName} {handover.requester?.lastName}
+                            {handover.recipientName || `${handover.requester?.firstName || ""} ${handover.requester?.lastName || ""}`.trim() || "-"}
                           </p>
                           <p className="text-sm text-slate-500" dir="ltr">
-                            {handover.requester?.phone}
+                            {handover.recipientPhone || handover.requester?.phone || "-"}
                           </p>
                         </div>
                       </div>
@@ -153,13 +164,13 @@ export default async function HandoverPage() {
               />
             ) : (
               <div className="space-y-4">
-                {activeLoans.map((loan) => {
-                  const dueDate = loan.scheduledReturnAt;
+                {activeLoans.map(({ groupKey, loans, first }) => {
+                  const dueDate = first.scheduledReturnAt;
                   const isOverdue = dueDate && new Date() > dueDate;
 
                   return (
                     <div
-                      key={loan.id}
+                      key={groupKey}
                       className={`p-4 rounded-lg border ${
                         isOverdue
                           ? "border-red-200 bg-red-50"
@@ -181,10 +192,10 @@ export default async function HandoverPage() {
                           </div>
                           <div>
                             <p className="font-medium">
-                              {loan.requester?.firstName} {loan.requester?.lastName}
+                              {first.recipientName || `${first.requester?.firstName || ""} ${first.requester?.lastName || ""}`.trim() || "-"}
                             </p>
                             <p className="text-sm text-slate-500" dir="ltr">
-                              {loan.requester?.phone}
+                              {first.recipientPhone || first.requester?.phone || "-"}
                             </p>
                           </div>
                         </div>
@@ -194,16 +205,19 @@ export default async function HandoverPage() {
                       </div>
                       <div className="flex items-center gap-2 mb-3 text-sm">
                         <Package className="w-4 h-4 text-slate-400" />
-                        <span>{loan.itemType?.name}</span>
+                        <span>
+                          {loans.map((l) => l.itemType?.name).join(", ")}
+                          {loans.length > 1 && ` (${loans.length} פריטים)`}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="text-xs text-slate-500">
-                          <span>הושאל: {formatDateTime(loan.handedOverAt)}</span>
+                          <span>הושאל: {formatDateTime(first.handedOverAt)}</span>
                         </div>
-                        <Link href={`/dashboard/handover/${loan.id}/return`}>
+                        <Link href={`/dashboard/handover/group/${groupKey}/return`}>
                           <Button size="sm" variant="outline">
                             <CheckCircle className="w-4 h-4" />
-                            קבל החזרה
+                            הוחזר אליי
                           </Button>
                         </Link>
                       </div>

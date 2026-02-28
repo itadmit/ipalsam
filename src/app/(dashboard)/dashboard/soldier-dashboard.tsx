@@ -54,12 +54,12 @@ async function MyRequests() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <FileText className="w-5 h-5" />
-          הבקשות שלי
+          ההשאלות שלי
         </CardTitle>
         <Link href="/dashboard/requests/new">
           <Button size="sm">
             <Plus className="w-4 h-4" />
-            בקשה חדשה
+            השאלה חדשה
           </Button>
         </Link>
       </CardHeader>
@@ -67,8 +67,8 @@ async function MyRequests() {
         {requests.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="אין בקשות פעילות"
-            description="לחץ על 'בקשה חדשה' כדי להגיש בקשה להשאלת ציוד"
+            title="אין השאלות פעילות"
+            description="לחץ על 'השאלה חדשה' כדי להגיש השאלה לציוד"
           />
         ) : (
           <div className="space-y-3">
@@ -194,7 +194,7 @@ async function RecentActivity() {
     },
     {
       id: "3",
-      action: "בקשה לאוזניות אושרה",
+      action: "השאלה לאוזניות אושרה",
       date: "17/01/2026 09:15",
       type: "approved",
     },
@@ -252,12 +252,12 @@ export function SoldierDashboard({ user }: SoldierDashboardProps) {
     <div>
       <PageHeader
         title={`שלום, ${user.firstName}`}
-        description="הבקשות והציוד שלי"
+        description="ההשאלות והציוד שלי"
         actions={
           <Link href="/dashboard/requests/new">
             <Button>
               <Plus className="w-4 h-4" />
-              בקשה חדשה
+              השאלה חדשה
             </Button>
           </Link>
         }

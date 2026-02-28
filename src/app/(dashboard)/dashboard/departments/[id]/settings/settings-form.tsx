@@ -110,7 +110,7 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
 
         <div className="space-y-3">
           <label className="block text-sm font-medium text-slate-700">
-            סוגי בקשות מותרים
+            סוגי השאלות מותרים
           </label>
           <div className="flex items-center gap-3">
             <input
@@ -121,7 +121,7 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
               className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
             <label htmlFor="allowImmediate" className="text-sm text-slate-700">
-              אפשר בקשות מיידיות
+              אפשר השאלות מיידיות
             </label>
           </div>
           <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
               className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
             <label htmlFor="allowScheduled" className="text-sm text-slate-700">
-              אפשר בקשות מתוזמנות
+              אפשר השאלות מתוזמנות
             </label>
           </div>
         </div>
