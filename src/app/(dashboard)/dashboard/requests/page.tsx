@@ -7,17 +7,9 @@ import { SearchBar } from "@/components/layout/search-bar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, FileText, Eye } from "lucide-react";
-import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
+import { Plus, FileText } from "lucide-react";
+import { RequestList } from "./request-list";
 import { db } from "@/db";
 import { requests } from "@/db/schema";
 import { eq, desc, or, and } from "drizzle-orm";
@@ -95,70 +87,23 @@ async function RequestsTable({ searchParams, user }: { searchParams: SearchParam
     );
   }
 
-  return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-slate-50">
-            <TableHead>חייל מבקש</TableHead>
-            <TableHead>פריטים</TableHead>
-            <TableHead>מחלקה</TableHead>
-            <TableHead>דחיפות</TableHead>
-            <TableHead>סטטוס</TableHead>
-            <TableHead>תאריך</TableHead>
-            <TableHead>פעולות</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {displayGroups.map(({ groupKey, requests: reqs, first }) => (
-            <TableRow key={groupKey}>
-              <TableCell>
-                <div>
-                  <p className="font-medium">
-                    {(first.recipientName || (first.requester ? `${first.requester.firstName || ""} ${first.requester.lastName || ""}`.trim() : "")) || "-"}
-                  </p>
-                  <p className="text-sm text-slate-500" dir="ltr">
-                    {first.recipientPhone || first.requester?.phone || "-"}
-                  </p>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="space-y-0.5">
-                  {reqs.map((r) => (
-                    <p key={r.id} className="text-sm">
-                      {r.itemType?.name}
-                      {r.quantity > 1 && ` (${r.quantity} יח')`}
-                    </p>
-                  ))}
-                </div>
-              </TableCell>
-              <TableCell>{first.department?.name || "-"}</TableCell>
-              <TableCell>
-                <Badge variant={first.urgency === "immediate" ? "destructive" : "info"}>
-                  {first.urgency === "immediate" ? "מיידי" : "מתוזמן"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge className={getStatusColor(first.status)}>
-                  {getStatusLabel(first.status)}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm text-slate-500">
-                {formatDateTime(first.createdAt)}
-              </TableCell>
-              <TableCell>
-                <Link href={`/dashboard/requests/${first.id}`}>
-                  <Button variant="ghost" size="icon">
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
+  const listData = displayGroups.map(({ groupKey, requests: reqs, first }) => ({
+    groupKey,
+    firstId: first.id,
+    recipientName:
+      (first.recipientName ||
+        (first.requester
+          ? `${first.requester.firstName || ""} ${first.requester.lastName || ""}`.trim()
+          : "")) || "-",
+    recipientPhone: first.recipientPhone || first.requester?.phone || "-",
+    reqs,
+    departmentName: first.department?.name || "-",
+    urgency: first.urgency,
+    status: first.status,
+    createdAt: first.createdAt,
+  }));
+
+  return <RequestList groups={listData} />;
 }
 
 export default async function RequestsPage({
@@ -186,8 +131,8 @@ export default async function RequestsPage({
         }
       />
 
-      <Card>
-        <CardContent className="p-4">
+      <Card className="overflow-hidden">
+        <CardContent className="p-4 max-w-full overflow-x-hidden">
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <SearchBar
               placeholder="חיפוש לפי חייל מבקש או פריט..."

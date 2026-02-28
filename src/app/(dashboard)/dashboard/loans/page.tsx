@@ -7,16 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/layout/search-bar";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Package, AlertTriangle, CheckCircle } from "lucide-react";
+import { LoanList } from "./loan-list";
 import { formatDate } from "@/lib/utils";
 import { db } from "@/db";
 import { requests } from "@/db/schema";
@@ -126,8 +119,8 @@ export default async function LoansPage() {
         </Card>
       )}
 
-      <Card>
-        <CardContent className="p-4">
+      <Card className="overflow-hidden">
+        <CardContent className="p-4 max-w-full overflow-x-hidden">
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <SearchBar
               placeholder="חיפוש לפי שם, טלפון או פריט..."
@@ -142,76 +135,18 @@ export default async function LoansPage() {
               description="כרגע אין פריטים מושאלים"
             />
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead>חייל מבקש</TableHead>
-                    <TableHead>פריטים</TableHead>
-                    <TableHead>מחלקה</TableHead>
-                    <TableHead>תאריך השאלה</TableHead>
-                    <TableHead>להחזרה</TableHead>
-                    <TableHead>סטטוס</TableHead>
-                    <TableHead>פעולות</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groups.map((group) => (
-                    <TableRow
-                      key={group.groupKey}
-                      className={group.minDaysLeft < 0 ? "bg-red-50" : ""}
-                    >
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{group.recipientName}</p>
-                          <p className="text-sm text-slate-500" dir="ltr">
-                            {group.recipientPhone}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          {group.loans.map((l) => (
-                            <p key={l.id} className="text-sm">
-                              {l.itemType?.name}
-                              {l.quantity > 1 && ` (${l.quantity} יח')`}
-                            </p>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>{group.loans[0].department?.name}</TableCell>
-                      <TableCell className="text-sm text-slate-500">
-                        {group.handedOverAt && formatDate(group.handedOverAt)}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {formatDate(group.earliestDue)}
-                      </TableCell>
-                      <TableCell>
-                        {group.minDaysLeft < 0 ? (
-                          <Badge variant="destructive">
-                            <AlertTriangle className="w-3 h-3 ml-1" />
-                            {Math.abs(group.minDaysLeft)} ימים באיחור
-                          </Badge>
-                        ) : group.minDaysLeft === 0 ? (
-                          <Badge variant="warning">היום!</Badge>
-                        ) : group.minDaysLeft <= 2 ? (
-                          <Badge variant="warning">{group.minDaysLeft} ימים</Badge>
-                        ) : (
-                          <Badge variant="secondary">{group.minDaysLeft} ימים</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Link href={`/dashboard/handover/group/${group.groupKey}/return`}>
-                          <Button size="sm" variant="outline">
-                            הוחזר
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <LoanList
+              groups={groups.map((g) => ({
+                groupKey: g.groupKey,
+                recipientName: g.recipientName,
+                recipientPhone: g.recipientPhone,
+                loans: g.loans,
+                departmentName: g.loans[0].department?.name || "-",
+                handedOverAt: g.handedOverAt,
+                earliestDue: g.earliestDue,
+                minDaysLeft: g.minDaysLeft,
+              }))}
+            />
           )}
         </CardContent>
       </Card>

@@ -17,7 +17,7 @@ import { formatDateTime, formatDate } from "@/lib/utils";
 import { GroupReturnButton } from "./group-return-button";
 import { db } from "@/db";
 import { requests } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 
 export default async function GroupReturnPage({
   params,
@@ -36,7 +36,7 @@ export default async function GroupReturnPage({
   let groupRequests = await db.query.requests.findMany({
     where: and(
       eq(requests.requestGroupId, groupKey),
-      eq(requests.status, "handed_over")
+      or(eq(requests.status, "approved"), eq(requests.status, "handed_over"))
     ),
     with: {
       requester: true,
@@ -47,7 +47,10 @@ export default async function GroupReturnPage({
 
   if (groupRequests.length === 0) {
     const single = await db.query.requests.findFirst({
-      where: and(eq(requests.id, groupKey), eq(requests.status, "handed_over")),
+      where: and(
+        eq(requests.id, groupKey),
+        or(eq(requests.status, "approved"), eq(requests.status, "handed_over"))
+      ),
       with: {
         requester: true,
         itemType: true,

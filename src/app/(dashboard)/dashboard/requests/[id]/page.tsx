@@ -100,7 +100,7 @@ export default async function RequestDetailPage({
                 {canApprove && (
                   <RequestApprovalActions requestId={request.id} status={request.status} />
                 )}
-                {canApprove && request.status === "handed_over" && (
+                {canApprove && (request.status === "approved" || request.status === "handed_over") && (
                   <Link href={`/dashboard/handover/group/${(request.requestGroupId ?? request.id)}/return`}>
                     <Button variant="outline">
                       <Package className="w-4 h-4" />

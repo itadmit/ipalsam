@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Heebo } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
@@ -11,6 +11,12 @@ const heebo = Heebo({
 export const metadata: Metadata = {
   title: "ipalsam - ניהול ציוד",
   description: "מערכת לניהול ציוד בבסיס צבאי",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

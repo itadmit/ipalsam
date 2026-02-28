@@ -9,7 +9,7 @@ import {
   signatures,
   auditLogs,
 } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { auth, canManageDepartment } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { CreateRequestFormData, SessionUser } from "@/types";
@@ -657,14 +657,17 @@ export async function returnGroup(groupKey: string) {
   let groupRequests = await db.query.requests.findMany({
     where: and(
       eq(requests.requestGroupId, groupKey),
-      eq(requests.status, "handed_over")
+      or(eq(requests.status, "approved"), eq(requests.status, "handed_over"))
     ),
     with: { itemType: true },
   });
 
   if (groupRequests.length === 0) {
     const single = await db.query.requests.findFirst({
-      where: and(eq(requests.id, groupKey), eq(requests.status, "handed_over")),
+      where: and(
+        eq(requests.id, groupKey),
+        or(eq(requests.status, "approved"), eq(requests.status, "handed_over"))
+      ),
       with: { itemType: true },
     });
     if (single) groupRequests = [single];
@@ -672,6 +675,47 @@ export async function returnGroup(groupKey: string) {
 
   if (groupRequests.length === 0) {
     return { error: "לא נמצאו השאלות להחזרה" };
+  }
+
+  // אם בסטטוס approved - הרץ מסירה קודם (ההשאלה=מסירה)
+  for (const req of groupRequests) {
+    if (req.status === "approved") {
+      let unitId = req.itemUnitId;
+      if (req.itemType?.type === "serial" && !unitId) {
+        const avail = await db.query.itemUnits.findFirst({
+          where: and(
+            eq(itemUnits.itemTypeId, req.itemTypeId),
+            eq(itemUnits.status, "available")
+          ),
+        });
+        if (avail) {
+          unitId = avail.id;
+          await db.update(requests).set({ itemUnitId: unitId, updatedAt: new Date() }).where(eq(requests.id, req.id));
+        }
+      }
+      if (req.itemType?.type === "quantity" || unitId) {
+        await executeHandover(req.id, session.user.id);
+      }
+    }
+  }
+
+  // טען מחדש - עכשיו handed_over
+  groupRequests = await db.query.requests.findMany({
+    where: and(
+      eq(requests.requestGroupId, groupKey),
+      eq(requests.status, "handed_over")
+    ),
+    with: { itemType: true },
+  });
+  if (groupRequests.length === 0) {
+    const single = await db.query.requests.findFirst({
+      where: and(eq(requests.id, groupKey), eq(requests.status, "handed_over")),
+      with: { itemType: true },
+    });
+    if (single) groupRequests = [single];
+  }
+  if (groupRequests.length === 0) {
+    return { error: "לא ניתן להחזיר - אין פריטים במסירה" };
   }
 
   const userRole = session.user.role as SessionUser["role"];
