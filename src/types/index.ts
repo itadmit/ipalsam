@@ -126,6 +126,9 @@ export type CreateRequestFormData = {
   scheduledReturnAt?: Date;
   purpose?: string;
   notes?: string;
+  recipientName: string;
+  recipientPhone?: string;
+  recipientSignature?: string;
 };
 
 // Dashboard stats

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { SignaturePad } from "@/components/ui/signature-pad";
 import { createRequest } from "@/actions/requests";
-import { Package, Clock, Calendar } from "lucide-react";
+import { Package, Clock, Calendar, ChevronDown, ChevronUp, User } from "lucide-react";
 
 interface Department {
   id: string;
@@ -54,8 +55,12 @@ export function NewRequestForm({
   const [itemTypeId, setItemTypeId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [urgency, setUrgency] = useState<"immediate" | "scheduled">("immediate");
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [recipientSignature, setRecipientSignature] = useState<string | null>(null);
   const [purpose, setPurpose] = useState("");
   const [notes, setNotes] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // תאריכים ושעות
   const [pickupDate, setPickupDate] = useState("");
@@ -89,6 +94,16 @@ export function NewRequestForm({
       return;
     }
 
+    if (!recipientName.trim()) {
+      setError("יש להזין שם החייל המקבל");
+      return;
+    }
+
+    if (!recipientSignature) {
+      setError("יש לחתום חתימה דיגיטלית");
+      return;
+    }
+
     if (selectedItem && quantity > selectedItem.available) {
       setError(`לא ניתן לבקש יותר מ-${selectedItem.available} יחידות`);
       return;
@@ -118,6 +133,9 @@ export function NewRequestForm({
         itemTypeId,
         quantity,
         urgency,
+        recipientName: recipientName.trim(),
+        recipientPhone: recipientPhone.trim() || undefined,
+        recipientSignature: recipientSignature || undefined,
         purpose: purpose || undefined,
         notes: notes || undefined,
         scheduledPickupAt: scheduledPickup,
@@ -293,6 +311,92 @@ export function NewRequestForm({
           </div>
         </div>
 
+        {/* פרטי החייל המקבל */}
+        <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+          <h4 className="font-medium text-slate-900 flex items-center gap-2">
+            <User className="w-4 h-4" />
+            פרטי החייל המקבל
+          </h4>
+          <Input
+            id="recipientName"
+            label="שם החייל המקבל (חובה)"
+            value={recipientName}
+            onChange={(e) => setRecipientName(e.target.value)}
+            placeholder="שם מלא"
+            required
+          />
+          <Input
+            id="recipientPhone"
+            label="טלפון"
+            type="tel"
+            value={recipientPhone}
+            onChange={(e) => setRecipientPhone(e.target.value)}
+            placeholder="050-0000000"
+            dir="ltr"
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              חתימה דיגיטלית (חובה)
+            </label>
+            <SignaturePad
+              value={recipientSignature}
+              onChange={setRecipientSignature}
+            />
+          </div>
+        </div>
+
+        {/* מתקדם - אקורדיון */}
+        <div className="border border-slate-200 rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen(!advancedOpen)}
+            className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors text-right"
+          >
+            <span className="font-medium text-slate-900">מתקדם</span>
+            {advancedOpen ? (
+              <ChevronUp className="w-5 h-5 text-slate-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-slate-500" />
+            )}
+          </button>
+          {advancedOpen && (
+            <div className="p-4 space-y-4 border-t border-slate-200">
+              <Input
+                id="returnDate"
+                label="תאריך החזרה מתוכנן"
+                type="date"
+                value={returnDate}
+                min={minReturnDate}
+                onChange={(e) => setReturnDate(e.target.value)}
+              />
+              <Input
+                id="purpose"
+                label="מטרה"
+                type="text"
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                placeholder="לאיזה צורך נדרש הציוד?"
+              />
+              <div>
+                <label
+                  htmlFor="notes"
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                >
+                  הערות
+                </label>
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="הערות נוספות..."
+                  rows={3}
+                  className="flex w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* תאריך ושעת איסוף - רק למתוזמן */}
         {urgency === "scheduled" && (
           <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
@@ -349,59 +453,6 @@ export function NewRequestForm({
             )}
           </div>
         )}
-
-        {/* תאריך החזרה מתוכנן */}
-        <div>
-          <label
-            htmlFor="returnDate"
-            className="block text-sm font-medium text-slate-700 mb-1.5"
-          >
-            תאריך החזרה מתוכנן (אופציונלי)
-          </label>
-          <Input
-            id="returnDate"
-            type="date"
-            value={returnDate}
-            min={minReturnDate}
-            onChange={(e) => setReturnDate(e.target.value)}
-          />
-          <p className="text-xs text-slate-500 mt-1">
-            מתי אתה מתכנן להחזיר את הציוד?
-          </p>
-        </div>
-
-        <div>
-          <label
-            htmlFor="purpose"
-            className="block text-sm font-medium text-slate-700 mb-1.5"
-          >
-            מטרה (אופציונלי)
-          </label>
-          <Input
-            id="purpose"
-            type="text"
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-            placeholder="לאיזה צורך נדרש הציוד?"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="notes"
-            className="block text-sm font-medium text-slate-700 mb-1.5"
-          >
-            הערות (אופציונלי)
-          </label>
-          <textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="הערות נוספות..."
-            rows={3}
-            className="flex w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-          />
-        </div>
       </div>
 
       <div className="flex gap-3">

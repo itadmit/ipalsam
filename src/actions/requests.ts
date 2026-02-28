@@ -50,6 +50,9 @@ export async function createRequest(data: CreateRequestFormData) {
       scheduledReturnAt: data.scheduledReturnAt || null,
       purpose: data.purpose || null,
       notes: data.notes || null,
+      recipientName: data.recipientName || null,
+      recipientPhone: data.recipientPhone || null,
+      recipientSignature: data.recipientSignature || null,
       status: "submitted",
     })
     .returning();

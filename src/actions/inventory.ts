@@ -38,6 +38,7 @@ export async function createItemType(data: CreateItemTypeFormData) {
       minimumAlert: data.minimumAlert || 0,
       requiresDoubleApproval: data.requiresDoubleApproval,
       maxLoanDays: data.maxLoanDays || null,
+      createdById: session.user.id,
     })
     .returning();
 
@@ -103,6 +104,7 @@ export async function createItemTypesBulk(
         minimumAlert: data.minimumAlert || 0,
         requiresDoubleApproval: data.requiresDoubleApproval ?? false,
         maxLoanDays: data.maxLoanDays || null,
+        createdById: session.user.id,
       });
 
       await db.insert(auditLogs).values({

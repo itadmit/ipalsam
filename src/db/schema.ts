@@ -163,6 +163,7 @@ export const itemTypes = pgTable("item_types", {
     .notNull(),
   maxLoanDays: integer("max_loan_days"), // מקסימום ימי השאלה
   isActive: boolean("is_active").default(true).notNull(),
+  createdById: uuid("created_by_id").references(() => users.id), // חייל קולט - מי שהזין את הפריט
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -202,6 +203,9 @@ export const requests = pgTable("requests", {
   scheduledReturnAt: timestamp("scheduled_return_at"),
   purpose: text("purpose"),
   notes: text("notes"),
+  recipientName: text("recipient_name"), // שם החייל המקבל (חובה)
+  recipientPhone: text("recipient_phone"),
+  recipientSignature: text("recipient_signature"), // חתימה דיגיטלית (data URL)
   status: requestStatusEnum("status").default("draft").notNull(),
   approvedById: uuid("approved_by_id").references(() => users.id),
   approvedAt: timestamp("approved_at"),
@@ -341,6 +345,10 @@ export const itemTypesRelations = relations(itemTypes, ({ one, many }) => ({
   category: one(categories, {
     fields: [itemTypes.categoryId],
     references: [categories.id],
+  }),
+  createdBy: one(users, {
+    fields: [itemTypes.createdById],
+    references: [users.id],
   }),
   units: many(itemUnits),
   movements: many(movements),

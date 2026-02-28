@@ -44,6 +44,7 @@ export default async function InventoryItemPage({
     with: {
       department: true,
       category: true,
+      createdBy: true,
     },
   });
 
@@ -271,6 +272,19 @@ export default async function InventoryItemPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-slate-500">חייל קולט / תאריך קליטה</p>
+                {item.createdBy ? (
+                  <>
+                    <p className="font-medium">
+                      {item.createdBy.firstName} {item.createdBy.lastName}
+                    </p>
+                    <p className="text-sm text-slate-500">{formatDateTime(item.createdAt)}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-500">{formatDateTime(item.createdAt)}</p>
+                )}
+              </div>
               <div>
                 <p className="text-sm text-slate-500">סוג</p>
                 <Badge variant="secondary">
