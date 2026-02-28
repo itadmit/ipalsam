@@ -47,6 +47,19 @@ export default async function RequestDetailPage({
     notFound();
   }
 
+  // Fetch all requests in the group (אותה השאלה)
+  const groupKey = request.requestGroupId ?? request.id;
+  const groupRequests = request.requestGroupId
+    ? await db.query.requests.findMany({
+        where: eq(requests.requestGroupId, request.requestGroupId!),
+        with: {
+          itemType: true,
+          department: true,
+        },
+        orderBy: (requests, { asc }) => [asc(requests.createdAt)],
+      })
+    : [request];
+
   const canApprove =
     session.user.role === "super_admin" ||
     session.user.role === "hq_commander" ||
@@ -56,7 +69,11 @@ export default async function RequestDetailPage({
     <div>
       <PageHeader
         title={`השאלה #${request.id.slice(0, 8)}`}
-        description={`${request.itemType?.name || "-"} • ${request.department?.name || "-"}`}
+        description={
+          groupRequests.length > 1
+            ? `${groupRequests.map((r) => r.itemType?.name).join(", ")} • ${groupRequests.length} פריטים`
+            : `${request.itemType?.name || "-"} • ${request.department?.name || "-"}`
+        }
         actions={
           <Link href="/dashboard/requests">
             <Button variant="outline">
@@ -95,34 +112,43 @@ export default async function RequestDetailPage({
             </CardContent>
           </Card>
 
-          {/* Item Details */}
+          {/* Item Details - כל הפריטים בהשאלה */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="w-5 h-5" />
-                פרטי הפריט
+                פרטי הפריטים {groupRequests.length > 1 && `(${groupRequests.length})`}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-slate-500">שם הפריט</p>
-                  <p className="font-medium">{request.itemType?.name || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">מק״ט</p>
-                  <code className="bg-slate-100 px-2 py-1 rounded text-sm">
-                    {request.itemType?.catalogNumber || "-"}
-                  </code>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">כמות</p>
-                  <p className="font-medium">{request.quantity} יח&apos;</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">מחלקה</p>
-                  <p className="font-medium">{request.department?.name || "-"}</p>
-                </div>
+              <div className="space-y-4">
+                {groupRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="p-4 rounded-lg bg-slate-50 border border-slate-200"
+                  >
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-slate-500">שם הפריט</p>
+                        <p className="font-medium">{req.itemType?.name || "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">מק״ט</p>
+                        <code className="bg-slate-100 px-2 py-1 rounded text-sm">
+                          {req.itemType?.catalogNumber || "-"}
+                        </code>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">כמות</p>
+                        <p className="font-medium">{req.quantity} יח&apos;</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">מחלקה</p>
+                        <p className="font-medium">{req.department?.name || "-"}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

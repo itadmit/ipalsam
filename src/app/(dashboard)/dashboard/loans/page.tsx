@@ -203,7 +203,7 @@ export default async function LoansPage() {
                       <TableCell>
                         <Link href={`/dashboard/handover/group/${group.groupKey}/return`}>
                           <Button size="sm" variant="outline">
-                            הוחזר אליי
+                            הוחזר
                           </Button>
                         </Link>
                       </TableCell>

@@ -57,7 +57,9 @@ export async function createRequest(data: CreateRequestFormData) {
       recipientName: data.recipientName || null,
       recipientPhone: data.recipientPhone || null,
       recipientSignature: data.recipientSignature || null,
-      status: "submitted",
+      status: "approved",
+      approvedById: session.user.id,
+      approvedAt: new Date(),
     })
     .returning();
 
@@ -160,7 +162,9 @@ export async function createRequestsBatch(
         recipientName: shared.recipientName || null,
         recipientPhone: shared.recipientPhone || null,
         recipientSignature: shared.recipientSignature || null,
-        status: "submitted",
+        status: "approved",
+        approvedById: session.user.id,
+        approvedAt: new Date(),
       })
       .returning();
 
@@ -237,6 +241,109 @@ export async function approveRequest(requestId: string, notes?: string) {
   revalidatePath("/dashboard/requests");
   revalidatePath("/dashboard");
 
+  return { success: true };
+}
+
+export async function approveGroup(requestGroupId: string, notes?: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const groupRequests = await db.query.requests.findMany({
+    where: and(
+      eq(requests.requestGroupId, requestGroupId),
+      eq(requests.status, "submitted")
+    ),
+    with: { itemType: true },
+  });
+
+  if (groupRequests.length === 0) {
+    return { error: "לא נמצאו השאלות לאישור" };
+  }
+
+  const userRole = session.user.role as SessionUser["role"];
+  const userDeptId = session.user.departmentId;
+
+  for (const req of groupRequests) {
+    if (!canManageDepartment(userRole, userDeptId, req.departmentId)) {
+      return { error: "אין הרשאה לאשר את כל הפריטים בהשאלה" };
+    }
+    if (req.itemType?.type === "quantity") {
+      if ((req.itemType.quantityAvailable || 0) < req.quantity) {
+        return { error: `אין מספיק במלאי עבור ${req.itemType.name}` };
+      }
+    }
+  }
+
+  for (const req of groupRequests) {
+    await db
+      .update(requests)
+      .set({
+        status: "approved",
+        approvedById: session.user.id,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, req.id));
+    await db.insert(auditLogs).values({
+      userId: session.user.id,
+      action: "approve_request",
+      entityType: "request",
+      entityId: req.id,
+      newValues: { notes },
+    });
+  }
+
+  revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function rejectGroup(requestGroupId: string, reason: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const groupRequests = await db.query.requests.findMany({
+    where: and(
+      eq(requests.requestGroupId, requestGroupId),
+      eq(requests.status, "submitted")
+    ),
+  });
+
+  if (groupRequests.length === 0) {
+    return { error: "לא נמצאו השאלות לדחייה" };
+  }
+
+  const userRole = session.user.role as SessionUser["role"];
+  const userDeptId = session.user.departmentId;
+
+  for (const req of groupRequests) {
+    if (!canManageDepartment(userRole, userDeptId, req.departmentId)) {
+      return { error: "אין הרשאה לדחות את כל הפריטים בהשאלה" };
+    }
+  }
+
+  for (const req of groupRequests) {
+    await db
+      .update(requests)
+      .set({
+        status: "rejected",
+        rejectionReason: reason,
+        approvedById: session.user.id,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, req.id));
+    await db.insert(auditLogs).values({
+      userId: session.user.id,
+      action: "reject_request",
+      entityType: "request",
+      entityId: req.id,
+      newValues: { reason },
+    });
+  }
+
+  revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 

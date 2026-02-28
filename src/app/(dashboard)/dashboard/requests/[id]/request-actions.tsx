@@ -6,14 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { CheckCircle, XCircle } from "lucide-react";
-import { approveRequest, rejectRequest } from "@/actions/requests";
+import { approveRequest, rejectRequest, approveGroup, rejectGroup } from "@/actions/requests";
 
 interface RequestActionsProps {
   requestId: string;
+  requestGroupId?: string | null;
+  groupRequestIds?: string[];
   status: string;
 }
 
-export function RequestApprovalActions({ requestId, status }: RequestActionsProps) {
+export function RequestApprovalActions({
+  requestId,
+  requestGroupId,
+  groupRequestIds = [],
+  status,
+}: RequestActionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -26,9 +33,14 @@ export function RequestApprovalActions({ requestId, status }: RequestActionsProp
   const handleApprove = async () => {
     setLoading("approve");
     try {
-      const result = await approveRequest(requestId);
+      const result =
+        requestGroupId && groupRequestIds.length > 1
+          ? await approveGroup(requestGroupId)
+          : await approveRequest(requestId);
       if (result.success) {
         router.refresh();
+      } else if (result.error) {
+        alert(result.error);
       }
     } catch (error) {
       console.error(error);
@@ -41,10 +53,16 @@ export function RequestApprovalActions({ requestId, status }: RequestActionsProp
     if (!rejectionReason.trim()) return;
     setLoading("reject");
     try {
-      const result = await rejectRequest(requestId, rejectionReason);
+      const result =
+        requestGroupId && groupRequestIds.length > 1
+          ? await rejectGroup(requestGroupId, rejectionReason)
+          : await rejectRequest(requestId, rejectionReason);
       if (result.success) {
         setShowRejectDialog(false);
+        setRejectionReason("");
         router.refresh();
+      } else if (result.error) {
+        alert(result.error);
       }
     } catch (error) {
       console.error(error);
