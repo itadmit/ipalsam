@@ -100,11 +100,11 @@ export default async function RequestDetailPage({
                 {canApprove && (
                   <RequestApprovalActions requestId={request.id} status={request.status} />
                 )}
-                {canApprove && request.status === "approved" && (
-                  <Link href={`/dashboard/handover/${request.id}`}>
-                    <Button>
+                {canApprove && request.status === "handed_over" && (
+                  <Link href={`/dashboard/handover/group/${(request.requestGroupId ?? request.id)}/return`}>
+                    <Button variant="outline">
                       <Package className="w-4 h-4" />
-                      בצע מסירה
+                      הוחזר
                     </Button>
                   </Link>
                 )}

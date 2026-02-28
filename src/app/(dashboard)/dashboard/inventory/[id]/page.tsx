@@ -62,13 +62,14 @@ export default async function InventoryItemPage({
       })
     : [];
 
-  // Get recent movements
+  // Get recent movements (היסטוריית השאלה)
   const recentMovements = await db.query.movements.findMany({
     where: eq(movements.itemTypeId, id),
-    limit: 10,
+    limit: 20,
     orderBy: [desc(movements.createdAt)],
     with: {
       executedBy: true,
+      request: { columns: { recipientName: true, recipientPhone: true } },
     },
   });
 
@@ -218,15 +219,15 @@ export default async function InventoryItemPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="w-5 h-5" />
-                תנועות אחרונות
+                היסטוריית השאלה
               </CardTitle>
             </CardHeader>
             <CardContent>
               {recentMovements.length === 0 ? (
                 <EmptyState
                   icon={History}
-                  title="אין תנועות"
-                  description="עדיין לא בוצעו תנועות בפריט זה"
+                  title="אין היסטוריה"
+                  description="עדיין לא בוצעו השאלות או החזרות בפריט זה"
                 />
               ) : (
                 <div className="space-y-3">
@@ -235,22 +236,29 @@ export default async function InventoryItemPage({
                       key={movement.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-slate-50"
                     >
-                      <div className="flex items-center gap-3">
-                        <Badge variant={
-                          movement.type === "intake" ? "success" :
-                          movement.type === "return" ? "info" : "warning"
-                        }>
-                          {movement.type === "intake" ? "קליטה" :
-                           movement.type === "return" ? "החזרה" :
-                           movement.type === "allocation" ? "הקצאה" : movement.type}
-                        </Badge>
-                        <span className="text-sm">
-                          {movement.executedBy
-                            ? `${movement.executedBy.firstName} ${movement.executedBy.lastName}`
-                            : "-"}
-                        </span>
-                        {movement.quantity > 1 && (
-                          <span className="text-sm text-slate-500">({movement.quantity} יח&apos;)</span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-3">
+                          <Badge variant={
+                            movement.type === "intake" ? "success" :
+                            movement.type === "return" ? "info" : "warning"
+                          }>
+                            {movement.type === "intake" ? "קליטה" :
+                             movement.type === "return" ? "החזרה" :
+                             movement.type === "allocation" ? "מסירה" : movement.type}
+                          </Badge>
+                          <span className="text-sm">
+                            {movement.executedBy
+                              ? `${movement.executedBy.firstName} ${movement.executedBy.lastName}`
+                              : "-"}
+                          </span>
+                          {movement.quantity > 1 && (
+                            <span className="text-sm text-slate-500">({movement.quantity} יח&apos;)</span>
+                          )}
+                        </div>
+                        {movement.request?.recipientName && (
+                          <span className="text-xs text-slate-500">
+                            → {movement.request.recipientName}
+                          </span>
                         )}
                       </div>
                       <span className="text-sm text-slate-500">{formatDateTime(movement.createdAt)}</span>

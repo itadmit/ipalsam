@@ -63,7 +63,6 @@ export async function createRequest(data: CreateRequestFormData) {
     })
     .returning();
 
-  // Log action
   await db.insert(auditLogs).values({
     userId: session.user.id,
     action: "create_request",
@@ -72,10 +71,104 @@ export async function createRequest(data: CreateRequestFormData) {
     newValues: data,
   });
 
+  // ההשאלה = מסירה: מיד אחרי אישור מבצעים מסירה (עדכון מלאי, תנועה, handed_over)
+  const reqWithType = await db.query.requests.findFirst({
+    where: eq(requests.id, newRequest.id),
+    with: { itemType: true },
+  });
+  if (reqWithType?.itemType) {
+    let unitId = reqWithType.itemUnitId;
+    if (reqWithType.itemType.type === "serial" && !unitId) {
+      const avail = await db.query.itemUnits.findFirst({
+        where: and(
+          eq(itemUnits.itemTypeId, reqWithType.itemTypeId),
+          eq(itemUnits.status, "available")
+        ),
+      });
+      if (avail) {
+        unitId = avail.id;
+        await db.update(requests).set({ itemUnitId: unitId, updatedAt: new Date() }).where(eq(requests.id, newRequest.id));
+      }
+    }
+    if (reqWithType.itemType.type === "quantity" || unitId) {
+      await executeHandover(newRequest.id, session.user.id);
+    }
+  }
+
   revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
 
   return { success: true, request: newRequest };
+}
+
+async function executeHandover(requestId: string, executedByUserId: string) {
+  const request = await db.query.requests.findFirst({
+    where: eq(requests.id, requestId),
+    with: { itemType: true },
+  });
+  if (!request || !request.itemType || request.status === "handed_over") return;
+
+  if (request.itemType.type === "quantity") {
+    await db
+      .update(itemTypes)
+      .set({
+        quantityAvailable: sql`${itemTypes.quantityAvailable} - ${request.quantity}`,
+        quantityInUse: sql`${itemTypes.quantityInUse} + ${request.quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(itemTypes.id, request.itemTypeId));
+  } else if (request.itemUnitId) {
+    await db
+      .update(itemUnits)
+      .set({
+        status: "in_use",
+        currentHolderId: request.requesterId,
+        updatedAt: new Date(),
+      })
+      .where(eq(itemUnits.id, request.itemUnitId));
+  } else return;
+
+  const [movement] = await db
+    .insert(movements)
+    .values({
+      itemTypeId: request.itemTypeId,
+      itemUnitId: request.itemUnitId,
+      requestId,
+      type: "allocation",
+      quantity: request.quantity,
+      fromDepartmentId: request.departmentId,
+      toUserId: request.requesterId,
+      executedById: executedByUserId,
+    })
+    .returning();
+
+  await db.insert(signatures).values({
+    movementId: movement.id,
+    requestId,
+    userId: request.requesterId,
+    signatureType: "handover",
+    confirmed: true,
+    pin: null,
+  });
+
+  await db
+    .update(requests)
+    .set({
+      status: "handed_over",
+      handedOverById: executedByUserId,
+      handedOverAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(requests.id, requestId));
+
+  await db.insert(auditLogs).values({
+    userId: executedByUserId,
+    action: "handover_item",
+    entityType: "request",
+    entityId: requestId,
+  });
 }
 
 export async function createRequestsBatch(
@@ -145,7 +238,27 @@ export async function createRequestsBatch(
   const requestGroupId = randomUUID();
 
   const created: string[] = [];
+  const assignedSerialUnits = new Map<string, string[]>();
+
   for (const row of items) {
+    const itemType = await db.query.itemTypes.findFirst({
+      where: eq(itemTypes.id, row.itemTypeId),
+    });
+    let itemUnitId: string | null = null;
+    if (itemType?.type === "serial") {
+      const assigned = assignedSerialUnits.get(row.itemTypeId) || [];
+      const avail = await db.query.itemUnits.findFirst({
+        where: and(
+          eq(itemUnits.itemTypeId, row.itemTypeId),
+          eq(itemUnits.status, "available")
+        ),
+      });
+      if (avail && !assigned.includes(avail.id)) {
+        itemUnitId = avail.id;
+        assignedSerialUnits.set(row.itemTypeId, [...assigned, avail.id]);
+      }
+    }
+
     const [newRequest] = await db
       .insert(requests)
       .values({
@@ -153,6 +266,7 @@ export async function createRequestsBatch(
         requesterId: session.user.id,
         departmentId: row.departmentId,
         itemTypeId: row.itemTypeId,
+        itemUnitId,
         quantity: row.quantity,
         urgency: shared.urgency,
         scheduledPickupAt: shared.scheduledPickupAt || null,
@@ -177,9 +291,16 @@ export async function createRequestsBatch(
       entityId: newRequest.id,
       newValues: { ...row, ...shared },
     });
+
+    // ההשאלה = מסירה: מיד מבצעים מסירה
+    if (itemType?.type === "quantity" || itemUnitId) {
+      await executeHandover(newRequest.id, session.user.id);
+    }
   }
 
   revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
 
   return { success: true, requestIds: created };
@@ -229,7 +350,6 @@ export async function approveRequest(requestId: string, notes?: string) {
     })
     .where(eq(requests.id, requestId));
 
-  // Log action
   await db.insert(auditLogs).values({
     userId: session.user.id,
     action: "approve_request",
@@ -238,7 +358,14 @@ export async function approveRequest(requestId: string, notes?: string) {
     newValues: { notes },
   });
 
+  // ההשאלה = מסירה: מיד אחרי אישור מבצעים מסירה
+  if (request.itemType?.type === "quantity" || request.itemUnitId) {
+    await executeHandover(requestId, session.user.id);
+  }
+
   revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
 
   return { success: true };
@@ -275,6 +402,19 @@ export async function approveGroup(requestGroupId: string, notes?: string) {
   }
 
   for (const req of groupRequests) {
+    let unitId = req.itemUnitId;
+    if (req.itemType?.type === "serial" && !unitId) {
+      const avail = await db.query.itemUnits.findFirst({
+        where: and(
+          eq(itemUnits.itemTypeId, req.itemTypeId),
+          eq(itemUnits.status, "available")
+        ),
+      });
+      if (avail) {
+        unitId = avail.id;
+        await db.update(requests).set({ itemUnitId: unitId, updatedAt: new Date() }).where(eq(requests.id, req.id));
+      }
+    }
     await db
       .update(requests)
       .set({
@@ -291,9 +431,15 @@ export async function approveGroup(requestGroupId: string, notes?: string) {
       entityId: req.id,
       newValues: { notes },
     });
+    // ההשאלה = מסירה: מיד אחרי אישור מבצעים מסירה
+    if (req.itemType?.type === "quantity" || unitId) {
+      await executeHandover(req.id, session.user.id);
+    }
   }
 
   revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
+  revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
   return { success: true };
 }
