@@ -17,7 +17,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
-import { RequestApprovalActions } from "./request-actions";
+import { RequestStatusChange } from "./request-status-change";
 import { db } from "@/db";
 import { requests } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -90,24 +90,20 @@ export default async function RequestDetailPage({
           {/* Status Card */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm text-slate-500 mb-1">סטטוס ההשאלה</p>
                   <Badge className={`${getStatusColor(request.status)} text-lg px-4 py-1`}>
                     {getStatusLabel(request.status)}
                   </Badge>
                 </div>
-                {canApprove && (
-                  <RequestApprovalActions requestId={request.id} status={request.status} />
-                )}
-                {canApprove && (request.status === "approved" || request.status === "handed_over") && (
-                  <Link href={`/dashboard/handover/group/${(request.requestGroupId ?? request.id)}/return`}>
-                    <Button variant="outline">
-                      <Package className="w-4 h-4" />
-                      הוחזר
-                    </Button>
-                  </Link>
-                )}
+                <RequestStatusChange
+                  requestId={request.id}
+                  requestGroupId={request.requestGroupId}
+                  groupRequestIds={groupRequests.map((r) => r.id)}
+                  status={request.status}
+                  canApprove={canApprove}
+                />
               </div>
             </CardContent>
           </Card>

@@ -47,7 +47,7 @@ export function GroupReturnButton({ groupKey }: { groupKey: string }) {
           size="lg"
         >
           <CheckCircle className="w-5 h-5" />
-          הוחזר
+          סמן כהוחזר
         </Button>
         <p className="text-sm text-slate-600 mt-2 text-center">
           לחיצה תחזיר את כל הפריטים למלאי

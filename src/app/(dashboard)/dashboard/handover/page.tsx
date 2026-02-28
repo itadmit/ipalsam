@@ -217,7 +217,7 @@ export default async function HandoverPage() {
                         <Link href={`/dashboard/handover/group/${groupKey}/return`}>
                           <Button size="sm" variant="outline">
                             <CheckCircle className="w-4 h-4" />
-                            הוחזר
+                            סמן כהוחזר
                           </Button>
                         </Link>
                       </div>

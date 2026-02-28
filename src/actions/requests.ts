@@ -903,3 +903,44 @@ export async function returnItem(
   return { success: true };
 }
 
+export async function updateRequestStatusToClosed(
+  requestId: string,
+  requestGroupId: string | null,
+  newStatus: "closed" | "overdue"
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const userRole = session.user.role as SessionUser["role"];
+  const userDeptId = session.user.departmentId;
+
+  const groupRows = requestGroupId
+    ? await db
+        .select({ id: requests.id, departmentId: requests.departmentId })
+        .from(requests)
+        .where(eq(requests.requestGroupId, requestGroupId))
+    : await db
+        .select({ id: requests.id, departmentId: requests.departmentId })
+        .from(requests)
+        .where(eq(requests.id, requestId));
+  const idsToUpdate = groupRows.map((r) => ({ id: r.id, departmentId: r.departmentId }));
+
+  for (const { id, departmentId } of idsToUpdate) {
+    if (!canManageDepartment(userRole, userDeptId, departmentId)) {
+      return { error: "אין הרשאה" };
+    }
+  }
+
+  for (const { id } of idsToUpdate) {
+    await db
+      .update(requests)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(requests.id, id));
+  }
+
+  revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+

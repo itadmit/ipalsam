@@ -16,6 +16,7 @@ import {
   User,
   Plus,
   Trash2,
+  Sparkles,
 } from "lucide-react";
 
 interface Department {
@@ -33,9 +34,16 @@ interface Item {
   available: number;
 }
 
+interface RecentSuggestion {
+  itemTypeId: string;
+  departmentId: string;
+  name: string;
+}
+
 interface NewRequestFormProps {
   departments: Department[];
   itemsByDepartment: Record<string, Item[]>;
+  recentSuggestions?: RecentSuggestion[];
 }
 
 interface RequestRow {
@@ -66,6 +74,7 @@ function generateRowId() {
 export function NewRequestForm({
   departments,
   itemsByDepartment,
+  recentSuggestions = [],
 }: NewRequestFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -115,6 +124,20 @@ export function NewRequestForm({
     setRows((prev) => [
       ...prev,
       { id: generateRowId(), departmentId: "", itemTypeId: "", quantity: 1 },
+    ]);
+  };
+
+  const addRowFromSuggestion = (itemTypeId: string, departmentId: string) => {
+    const avail = getAvailableForItem(itemTypeId);
+    if (avail < 1) return;
+    setRows((prev) => [
+      ...prev,
+      {
+        id: generateRowId(),
+        departmentId,
+        itemTypeId,
+        quantity: 1,
+      },
     ]);
   };
 
@@ -245,6 +268,32 @@ export function NewRequestForm({
               הוסף פריט
             </Button>
           </div>
+
+          {recentSuggestions.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                הושאלו לאחרונה:
+              </span>
+              {recentSuggestions.map((s) => {
+                const avail = getAvailableForItem(s.itemTypeId);
+                const canAdd = avail >= 1;
+                return (
+                  <Button
+                    key={s.itemTypeId}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => canAdd && addRowFromSuggestion(s.itemTypeId, s.departmentId)}
+                    disabled={!canAdd}
+                    className="h-8 text-xs border border-slate-200 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-50"
+                  >
+                    {s.name}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="space-y-3">
             {rows.map((row) => {
