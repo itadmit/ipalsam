@@ -55,6 +55,80 @@ export async function createItemType(data: CreateItemTypeFormData) {
   return { success: true, itemType: newItemType };
 }
 
+export async function createItemTypesBulk(
+  items: CreateItemTypeFormData[]
+) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return { error: "לא מחובר", created: 0, failed: 0 };
+  }
+
+  const userRole = session.user.role as SessionUser["role"];
+  const userDeptId = session.user.departmentId;
+
+  let created = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const data = items[i];
+
+    if (!data.name?.trim()) {
+      errors.push(`שורה ${i + 1}: שם מוצר חובה`);
+      continue;
+    }
+
+    if (!data.departmentId) {
+      errors.push(`שורה ${i + 1}: מחלקה חובה`);
+      continue;
+    }
+
+    if (!canManageDepartment(userRole, userDeptId, data.departmentId)) {
+      errors.push(`שורה ${i + 1}: אין הרשאה למחלקה זו`);
+      continue;
+    }
+
+    try {
+      await db.insert(itemTypes).values({
+        name: data.name.trim(),
+        catalogNumber: data.catalogNumber?.trim() || null,
+        description: data.description?.trim() || null,
+        notes: data.notes?.trim() || null,
+        departmentId: data.departmentId,
+        categoryId: data.categoryId || null,
+        type: data.type,
+        quantityTotal: data.type === "quantity" ? (data.quantityTotal || 0) : null,
+        quantityAvailable: data.type === "quantity" ? (data.quantityTotal || 0) : null,
+        quantityInUse: 0,
+        minimumAlert: data.minimumAlert || 0,
+        requiresDoubleApproval: data.requiresDoubleApproval ?? false,
+        maxLoanDays: data.maxLoanDays || null,
+      });
+
+      await db.insert(auditLogs).values({
+        userId: session.user.id,
+        action: "create_item_type",
+        entityType: "item_type",
+        entityId: null,
+        newValues: data,
+      });
+
+      created++;
+    } catch (e) {
+      errors.push(`שורה ${i + 1}: ${e instanceof Error ? e.message : "שגיאה"}`);
+    }
+  }
+
+  revalidatePath("/dashboard/inventory");
+
+  return {
+    success: errors.length === 0,
+    created,
+    failed: items.length - created,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
 export async function addSerialUnit(
   itemTypeId: string,
   serialNumber: string,

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, FileSpreadsheet } from "lucide-react";
-import { NewItemForm } from "./new-item-form";
+import { BulkItemForm } from "./bulk-item-form";
 import { db } from "@/db";
 import { departments, categories } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -34,11 +34,10 @@ async function getCategoriesByDepartment() {
   return grouped;
 }
 
-export default async function NewInventoryItemPage() {
+export default async function BulkImportPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  // Only admins and dept commanders can add items
   if (session.user.role === "soldier") {
     redirect("/dashboard");
   }
@@ -49,15 +48,12 @@ export default async function NewInventoryItemPage() {
   return (
     <div>
       <PageHeader
-        title="הוספת פריט חדש"
-        description="הוסף סוג ציוד חדש למלאי"
+        title="קליטת פריטים בבאלק"
+        description="הוסף מספר פריטים בבת אחת - מלא את הטבלה או הדבק מאקסל (עמודות מופרדות בטאב)"
         actions={
           <div className="flex gap-2">
-            <Link href="/dashboard/inventory/new/bulk">
-              <Button variant="outline">
-                <FileSpreadsheet className="w-4 h-4" />
-                קליטה בבאלק
-              </Button>
+            <Link href="/dashboard/inventory/new">
+              <Button variant="outline">פריט בודד</Button>
             </Link>
             <Link href="/dashboard/inventory">
               <Button variant="outline">
@@ -69,9 +65,15 @@ export default async function NewInventoryItemPage() {
         }
       />
 
-      <Card className="max-w-2xl">
+      <Card className="max-w-6xl">
         <CardContent className="p-6">
-          <NewItemForm
+          <div className="flex items-center gap-2 text-slate-600 mb-4">
+            <FileSpreadsheet className="w-5 h-5" />
+            <p className="text-sm">
+              פורמט הדבקה מאקסל: שם | מק״ט | סוג (כמותי/סריאלי) | כמות | התראה | ימי השאלה
+            </p>
+          </div>
+          <BulkItemForm
             departments={departmentsList}
             categoriesByDepartment={categoriesByDepartment}
             userDepartmentId={session.user.departmentId}

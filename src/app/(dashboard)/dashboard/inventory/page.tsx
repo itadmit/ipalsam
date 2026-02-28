@@ -16,7 +16,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Package, Edit, Eye } from "lucide-react";
+import { Plus, Package, Edit, Eye, FileSpreadsheet } from "lucide-react";
 import { FilterButton, ExportButton } from "./inventory-actions";
 import { db } from "@/db";
 import { itemTypes } from "@/db/schema";
@@ -56,12 +56,20 @@ async function InventoryTable({ searchParams }: { searchParams: SearchParams }) 
         title="אין פריטים במלאי"
         description="התחל בהוספת פריטים למערכת"
         action={
-          <Link href="/dashboard/inventory/new">
-            <Button>
-              <Plus className="w-4 h-4" />
-              הוסף פריט חדש
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/dashboard/inventory/new/bulk">
+              <Button variant="outline">
+                <FileSpreadsheet className="w-4 h-4" />
+                קליטה בבאלק
+              </Button>
+            </Link>
+            <Link href="/dashboard/inventory/new">
+              <Button>
+                <Plus className="w-4 h-4" />
+                הוסף פריט חדש
+              </Button>
+            </Link>
+          </div>
         }
       />
     );
@@ -161,6 +169,12 @@ export default async function InventoryPage({
         actions={
           <div className="flex gap-2">
             <ExportButton />
+            <Link href="/dashboard/inventory/new/bulk">
+              <Button variant="outline">
+                <FileSpreadsheet className="w-4 h-4" />
+                קליטה בבאלק
+              </Button>
+            </Link>
             <Link href="/dashboard/inventory/new">
               <Button>
                 <Plus className="w-4 h-4" />
