@@ -23,6 +23,19 @@
     @apply bg-slate-50 text-slate-900 antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* סימון לחיצה לכל הכפתורים והאלמנטים הניתנים ללחיצה */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a[href] {
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:not(:disabled):active {
+    transform: scale(0.98);
+  }
 }
 
 /* RTL Support */

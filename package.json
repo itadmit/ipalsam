@@ -11,7 +11,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "npx tsx src/db/seed.ts"
+    "db:seed": "npx tsx src/db/seed.ts",
+    "db:reset": "npx tsx src/db/reset.ts",
+    "db:reset-inventory": "npx tsx src/db/reset-inventory.ts",
+    "db:update-users": "npx tsx src/db/update-users.ts",
+    "db:fresh": "npm run db:reset && npm run db:seed"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
