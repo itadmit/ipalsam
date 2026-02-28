@@ -9,7 +9,7 @@ import {
   signatures,
   auditLogs,
 } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { auth, canManageDepartment } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { CreateRequestFormData, SessionUser } from "@/types";
@@ -70,6 +70,111 @@ export async function createRequest(data: CreateRequestFormData) {
   revalidatePath("/dashboard");
 
   return { success: true, request: newRequest };
+}
+
+export async function createRequestsBatch(
+  items: { departmentId: string; itemTypeId: string; quantity: number }[],
+  shared: {
+    urgency: "immediate" | "scheduled";
+    recipientName: string;
+    recipientPhone?: string;
+    recipientSignature?: string;
+    scheduledPickupAt?: Date;
+    scheduledReturnAt?: Date;
+    purpose?: string;
+    notes?: string;
+  }
+) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return { error: "לא מחובר" };
+  }
+
+  if (items.length === 0) {
+    return { error: "יש להוסיף לפחות פריט אחד" };
+  }
+
+  // אגרגציה לפי פריט - בדיקת מלאי
+  const itemTotals = new Map<string, { departmentId: string; quantity: number }>();
+  for (const row of items) {
+    const key = row.itemTypeId;
+    const existing = itemTotals.get(key);
+    if (existing) {
+      existing.quantity += row.quantity;
+      // departmentId - לוקחים מהשורה הראשונה
+    } else {
+      itemTotals.set(key, {
+        departmentId: row.departmentId,
+        quantity: row.quantity,
+      });
+    }
+  }
+
+  // בדיקת זמינות לכל פריט
+  for (const [itemTypeId, { quantity }] of itemTotals) {
+    const itemType = await db.query.itemTypes.findFirst({
+      where: eq(itemTypes.id, itemTypeId),
+    });
+    if (!itemType) {
+      return { error: "פריט לא נמצא" };
+    }
+    const available = itemType.type === "quantity"
+      ? (itemType.quantityAvailable || 0)
+      : (await db.query.itemUnits.findMany({
+          where: and(
+            eq(itemUnits.itemTypeId, itemTypeId),
+            eq(itemUnits.status, "available")
+          ),
+          columns: { id: true },
+        })).length;
+    if (available < quantity) {
+      return {
+        error: `אין מספיק במלאי עבור "${itemType.name}". זמין: ${available}, מבוקש: ${quantity}`,
+      };
+    }
+  }
+
+  const { randomUUID } = await import("crypto");
+  const requestGroupId = randomUUID();
+
+  const created: string[] = [];
+  for (const row of items) {
+    const [newRequest] = await db
+      .insert(requests)
+      .values({
+        requestGroupId,
+        requesterId: session.user.id,
+        departmentId: row.departmentId,
+        itemTypeId: row.itemTypeId,
+        quantity: row.quantity,
+        urgency: shared.urgency,
+        scheduledPickupAt: shared.scheduledPickupAt || null,
+        scheduledReturnAt: shared.scheduledReturnAt || null,
+        purpose: shared.purpose || null,
+        notes: shared.notes || null,
+        recipientName: shared.recipientName || null,
+        recipientPhone: shared.recipientPhone || null,
+        recipientSignature: shared.recipientSignature || null,
+        status: "submitted",
+      })
+      .returning();
+
+    created.push(newRequest.id);
+
+    await db.insert(auditLogs).values({
+      userId: session.user.id,
+      action: "create_request",
+      entityType: "request",
+      entityId: newRequest.id,
+      newValues: { ...row, ...shared },
+    });
+  }
+
+  revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard");
+
+  return { success: true, requestIds: created };
 }
 
 export async function approveRequest(requestId: string, notes?: string) {

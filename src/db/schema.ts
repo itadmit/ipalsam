@@ -187,6 +187,7 @@ export const itemUnits = pgTable("item_units", {
 // בקשות
 export const requests = pgTable("requests", {
   id: uuid("id").defaultRandom().primaryKey(),
+  requestGroupId: uuid("request_group_id"), // קישור בקשות מאותה הגשה
   requesterId: uuid("requester_id")
     .references(() => users.id)
     .notNull(),
