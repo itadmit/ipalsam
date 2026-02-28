@@ -12,6 +12,7 @@ async function reset() {
   const tables = [
     "signatures",
     "audit_logs",
+    "system_settings",
     "inventory_snapshots",
     "movements",
     "requests",

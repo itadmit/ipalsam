@@ -46,6 +46,9 @@ export default async function EditInventoryItemPage({
     minimumAlert: item.minimumAlert || 0,
     requiresDoubleApproval: item.requiresDoubleApproval,
     maxLoanDays: item.maxLoanDays,
+    quantityTotal: item.quantityTotal ?? undefined,
+    quantityAvailable: item.quantityAvailable ?? undefined,
+    quantityInUse: item.quantityInUse ?? undefined,
   };
 
   return (

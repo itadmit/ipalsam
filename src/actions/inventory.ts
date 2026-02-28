@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { itemTypes, itemUnits, movements, auditLogs } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { itemTypes, itemUnits, movements, auditLogs, signatures, requests } from "@/db/schema";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { auth, canManageDepartment } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { CreateItemTypeFormData, SessionUser } from "@/types";
@@ -314,6 +314,17 @@ export async function updateItemType(
   if (data.maxLoanDays !== undefined)
     updateData.maxLoanDays = data.maxLoanDays || null;
 
+  // עדכון כמות לפריט כמותי
+  if (itemType.type === "quantity" && data.quantityTotal !== undefined) {
+    const newTotal = data.quantityTotal;
+    const inUse = itemType.quantityInUse || 0;
+    if (newTotal < inUse) {
+      return { error: `לא ניתן להקטין מתחת ל-${inUse} יחידות (בשימוש)` };
+    }
+    updateData.quantityTotal = newTotal;
+    updateData.quantityAvailable = newTotal - inUse;
+  }
+
   await db.update(itemTypes).set(updateData).where(eq(itemTypes.id, itemTypeId));
 
   // Log action
@@ -328,6 +339,76 @@ export async function updateItemType(
 
   revalidatePath("/dashboard/inventory");
   revalidatePath(`/dashboard/inventory/${itemTypeId}`);
+
+  return { success: true };
+}
+
+export async function deleteItemType(itemTypeId: string) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return { error: "לא מחובר" };
+  }
+
+  const itemType = await db.query.itemTypes.findFirst({
+    where: eq(itemTypes.id, itemTypeId),
+  });
+
+  if (!itemType) {
+    return { error: "סוג ציוד לא נמצא" };
+  }
+
+  const userRole = session.user.role as SessionUser["role"];
+  const userDeptId = session.user.departmentId;
+
+  if (!canManageDepartment(userRole, userDeptId, itemType.departmentId)) {
+    return { error: "אין הרשאה" };
+  }
+
+  // בדיקה שאין בקשות פעילות
+  const activeRequests = await db.query.requests.findMany({
+    where: and(
+      eq(requests.itemTypeId, itemTypeId),
+      inArray(requests.status, [
+        "submitted",
+        "approved",
+        "ready_for_pickup",
+        "handed_over",
+        "overdue",
+      ])
+    ),
+  });
+
+  if (activeRequests.length > 0) {
+    return {
+      error: `לא ניתן למחוק - יש ${activeRequests.length} בקשות פעילות. סגור אותן קודם.`,
+    };
+  }
+
+  const movementIds = await db
+    .select({ id: movements.id })
+    .from(movements)
+    .where(eq(movements.itemTypeId, itemTypeId));
+
+  if (movementIds.length > 0) {
+    await db.delete(signatures).where(
+      inArray(signatures.movementId, movementIds.map((m) => m.id))
+    );
+  }
+  await db.delete(movements).where(eq(movements.itemTypeId, itemTypeId));
+  await db.delete(requests).where(eq(requests.itemTypeId, itemTypeId));
+  await db.delete(itemUnits).where(eq(itemUnits.itemTypeId, itemTypeId));
+  await db.delete(itemTypes).where(eq(itemTypes.id, itemTypeId));
+
+  await db.insert(auditLogs).values({
+    userId: session.user.id,
+    action: "delete_item_type",
+    entityType: "item_type",
+    entityId: itemTypeId,
+    oldValues: { name: itemType.name },
+  });
+
+  revalidatePath("/dashboard/inventory");
 
   return { success: true };
 }

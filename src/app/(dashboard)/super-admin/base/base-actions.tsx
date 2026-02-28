@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   CheckCircle,
 } from "lucide-react";
+import { createOperationalPeriod } from "@/actions/base";
 
 interface BaseActionsProps {
   baseId: string;
@@ -26,6 +27,7 @@ export function BaseActions({ baseId, hasActivePeriod, periodName }: BaseActions
   const [showNewPeriodDialog, setShowNewPeriodDialog] = useState(false);
   const [newPeriodName, setNewPeriodName] = useState("");
   const [confirmText, setConfirmText] = useState("");
+  const [periodError, setPeriodError] = useState("");
 
   const handleEndPeriod = async () => {
     setLoading(true);
@@ -61,15 +63,19 @@ export function BaseActions({ baseId, hasActivePeriod, periodName }: BaseActions
   const handleNewPeriod = async () => {
     if (!newPeriodName.trim()) return;
     setLoading(true);
+    setPeriodError("");
     try {
-      // TODO: Call server action
-      // await createPeriod(baseId, newPeriodName);
-      await new Promise((r) => setTimeout(r, 1000));
-      setShowNewPeriodDialog(false);
-      setNewPeriodName("");
-      router.refresh();
+      const result = await createOperationalPeriod(baseId, newPeriodName.trim());
+      if (result.error) {
+        setPeriodError(result.error);
+      } else {
+        setShowNewPeriodDialog(false);
+        setNewPeriodName("");
+        router.refresh();
+      }
     } catch (error) {
       console.error(error);
+      setPeriodError("אירעה שגיאה. אנא נסה שוב");
     } finally {
       setLoading(false);
     }
@@ -86,12 +92,17 @@ export function BaseActions({ baseId, hasActivePeriod, periodName }: BaseActions
           </Button>
         </div>
 
-        <Dialog open={showNewPeriodDialog} onOpenChange={setShowNewPeriodDialog}>
+        <Dialog open={showNewPeriodDialog} onOpenChange={(open) => { setShowNewPeriodDialog(open); setPeriodError(""); }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>פתיחת תקופה חדשה</DialogTitle>
             </DialogHeader>
-            <div className="py-4">
+            <div className="py-4 space-y-4">
+              {periodError && (
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                  {periodError}
+                </div>
+              )}
               <Input
                 id="periodName"
                 label="שם התקופה"

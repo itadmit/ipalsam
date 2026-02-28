@@ -18,6 +18,10 @@ interface EditItemFormProps {
     minimumAlert: number;
     requiresDoubleApproval: boolean;
     maxLoanDays: number | null;
+    type: "serial" | "quantity";
+    quantityTotal?: number;
+    quantityAvailable?: number;
+    quantityInUse?: number;
   };
   categories: { id: string; name: string }[];
 }
@@ -35,6 +39,7 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
   const [minimumAlert, setMinimumAlert] = useState(item.minimumAlert);
   const [requiresDoubleApproval, setRequiresDoubleApproval] = useState(item.requiresDoubleApproval);
   const [maxLoanDays, setMaxLoanDays] = useState(item.maxLoanDays || 0);
+  const [quantityTotal, setQuantityTotal] = useState(item.quantityTotal || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +56,7 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
         minimumAlert,
         requiresDoubleApproval,
         maxLoanDays: maxLoanDays || undefined,
+        ...(item.type === "quantity" && { quantityTotal }),
       });
 
       if (result.error) {
@@ -129,6 +135,17 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
             className="flex w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
+
+        {item.type === "quantity" && (
+          <Input
+            id="quantityTotal"
+            label="כמות כוללת"
+            type="number"
+            min={item.quantityInUse || 0}
+            value={quantityTotal}
+            onChange={(e) => setQuantityTotal(parseInt(e.target.value) || 0)}
+          />
+        )}
 
         <Input
           id="minimumAlert"

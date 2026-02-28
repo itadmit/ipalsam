@@ -23,6 +23,7 @@ import {
   History,
   AlertTriangle,
 } from "lucide-react";
+import { DeleteItemButton } from "./delete-item-button";
 import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
 import { db } from "@/db";
 import { itemTypes, itemUnits, movements } from "@/db/schema";
@@ -321,6 +322,7 @@ export default async function InventoryItemPage({
                   מסירה/החזרה
                 </Button>
               </Link>
+              <DeleteItemButton itemId={id} itemName={item.name} />
             </CardContent>
           </Card>
         </div>

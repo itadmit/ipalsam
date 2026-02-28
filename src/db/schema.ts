@@ -254,6 +254,14 @@ export const signatures = pgTable("signatures", {
   pin: text("pin"), // PIN קצר אם נדרש
 });
 
+// הגדרות מערכת (key-value)
+export const systemSettings = pgTable("system_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  key: text("key").unique().notNull(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Audit Log
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),

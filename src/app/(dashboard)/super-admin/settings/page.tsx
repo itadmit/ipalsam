@@ -3,6 +3,12 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import type { SessionUser } from "@/types";
 import {
+  getGeneralSettings,
+  getNotificationSettings,
+  getSecuritySettings,
+  getLoanSettings,
+} from "@/actions/settings";
+import {
   GeneralSettingsForm,
   NotificationSettingsForm,
   SecuritySettingsForm,
@@ -18,6 +24,13 @@ export default async function SettingsPage() {
     redirect("/dashboard");
   }
 
+  const [general, notifications, security, loan] = await Promise.all([
+    getGeneralSettings(),
+    getNotificationSettings(),
+    getSecuritySettings(),
+    getLoanSettings(),
+  ]);
+
   return (
     <div>
       <PageHeader
@@ -26,10 +39,23 @@ export default async function SettingsPage() {
       />
 
       <div className="max-w-3xl space-y-6">
-        <GeneralSettingsForm />
-        <NotificationSettingsForm />
-        <SecuritySettingsForm />
-        <LoanSettingsForm />
+        <GeneralSettingsForm
+          initialBaseName={!("error" in general) ? general.baseName : "בסיס מרכזי"}
+          initialSystemEmail={!("error" in general) ? general.systemEmail : "system@ipalsam.co.il"}
+        />
+        <NotificationSettingsForm
+          initialOverdue={!("error" in notifications) ? notifications.overdueNotifications : true}
+          initialLowStock={!("error" in notifications) ? notifications.lowStockNotifications : true}
+          initialNewRequest={!("error" in notifications) ? notifications.newRequestNotifications : true}
+        />
+        <SecuritySettingsForm
+          initialSessionTimeout={!("error" in security) ? security.sessionTimeout : "24"}
+          initialForcePasswordChange={!("error" in security) ? security.forcePasswordChange : true}
+        />
+        <LoanSettingsForm
+          initialDefaultLoanDays={!("error" in loan) ? loan.defaultLoanDays : "7"}
+          initialOverdueDays={!("error" in loan) ? loan.overdueDays : "1"}
+        />
         <DatabaseActions />
         <SystemResetAction />
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,21 +8,44 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Bell, Shield, Clock, Database, Save, AlertTriangle, Trash2 } from "lucide-react";
 import { resetSystem } from "@/actions/system";
+import {
+  saveGeneralSettings,
+  saveNotificationSettings,
+  saveSecuritySettings,
+  saveLoanSettings,
+} from "@/actions/settings";
 
-export function GeneralSettingsForm() {
+export function GeneralSettingsForm({
+  initialBaseName,
+  initialSystemEmail,
+}: {
+  initialBaseName: string;
+  initialSystemEmail: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [baseName, setBaseName] = useState("בסיס מרכזי");
-  const [systemEmail, setSystemEmail] = useState("system@ipalsam.co.il");
+  const [error, setError] = useState("");
+  const [baseName, setBaseName] = useState(initialBaseName);
+  const [systemEmail, setSystemEmail] = useState(initialSystemEmail);
+
+  useEffect(() => {
+    setBaseName(initialBaseName);
+    setSystemEmail(initialSystemEmail);
+  }, [initialBaseName, initialSystemEmail]);
 
   const handleSave = async () => {
     setLoading(true);
+    setError("");
     try {
-      // TODO: Call server action to save settings
-      await new Promise((r) => setTimeout(r, 1000));
-      router.refresh();
-    } catch (error) {
-      console.error(error);
+      const result = await saveGeneralSettings(baseName, systemEmail);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("אירעה שגיאה. אנא נסה שוב");
     } finally {
       setLoading(false);
     }
@@ -37,6 +60,11 @@ export function GeneralSettingsForm() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {error}
+          </div>
+        )}
         <Input
           id="baseName"
           label="שם הבסיס"
@@ -60,21 +88,45 @@ export function GeneralSettingsForm() {
   );
 }
 
-export function NotificationSettingsForm() {
+export function NotificationSettingsForm({
+  initialOverdue,
+  initialLowStock,
+  initialNewRequest,
+}: {
+  initialOverdue: boolean;
+  initialLowStock: boolean;
+  initialNewRequest: boolean;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [overdueNotifications, setOverdueNotifications] = useState(true);
-  const [lowStockNotifications, setLowStockNotifications] = useState(true);
-  const [newRequestNotifications, setNewRequestNotifications] = useState(true);
+  const [error, setError] = useState("");
+  const [overdueNotifications, setOverdueNotifications] = useState(initialOverdue);
+  const [lowStockNotifications, setLowStockNotifications] = useState(initialLowStock);
+  const [newRequestNotifications, setNewRequestNotifications] = useState(initialNewRequest);
+
+  useEffect(() => {
+    setOverdueNotifications(initialOverdue);
+    setLowStockNotifications(initialLowStock);
+    setNewRequestNotifications(initialNewRequest);
+  }, [initialOverdue, initialLowStock, initialNewRequest]);
 
   const handleSave = async () => {
     setLoading(true);
+    setError("");
     try {
-      // TODO: Call server action to save settings
-      await new Promise((r) => setTimeout(r, 1000));
-      router.refresh();
-    } catch (error) {
-      console.error(error);
+      const result = await saveNotificationSettings(
+        overdueNotifications,
+        lowStockNotifications,
+        newRequestNotifications
+      );
+      if (result.error) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("אירעה שגיאה. אנא נסה שוב");
     } finally {
       setLoading(false);
     }
@@ -89,6 +141,11 @@ export function NotificationSettingsForm() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {error}
+          </div>
+        )}
         <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
           <div>
             <p className="font-medium">התראות איחור</p>
@@ -134,20 +191,37 @@ export function NotificationSettingsForm() {
   );
 }
 
-export function SecuritySettingsForm() {
+export function SecuritySettingsForm({
+  initialSessionTimeout,
+  initialForcePasswordChange,
+}: {
+  initialSessionTimeout: string;
+  initialForcePasswordChange: boolean;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [sessionTimeout, setSessionTimeout] = useState("24");
-  const [forcePasswordChange, setForcePasswordChange] = useState(true);
+  const [error, setError] = useState("");
+  const [sessionTimeout, setSessionTimeout] = useState(initialSessionTimeout);
+  const [forcePasswordChange, setForcePasswordChange] = useState(initialForcePasswordChange);
+
+  useEffect(() => {
+    setSessionTimeout(initialSessionTimeout);
+    setForcePasswordChange(initialForcePasswordChange);
+  }, [initialSessionTimeout, initialForcePasswordChange]);
 
   const handleSave = async () => {
     setLoading(true);
+    setError("");
     try {
-      // TODO: Call server action to save settings
-      await new Promise((r) => setTimeout(r, 1000));
-      router.refresh();
-    } catch (error) {
-      console.error(error);
+      const result = await saveSecuritySettings(sessionTimeout, forcePasswordChange);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("אירעה שגיאה. אנא נסה שוב");
     } finally {
       setLoading(false);
     }
@@ -162,6 +236,11 @@ export function SecuritySettingsForm() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {error}
+          </div>
+        )}
         <Input
           id="sessionTimeout"
           label="זמן פקיעת סשן (שעות)"
@@ -192,20 +271,37 @@ export function SecuritySettingsForm() {
   );
 }
 
-export function LoanSettingsForm() {
+export function LoanSettingsForm({
+  initialDefaultLoanDays,
+  initialOverdueDays,
+}: {
+  initialDefaultLoanDays: string;
+  initialOverdueDays: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [defaultLoanDays, setDefaultLoanDays] = useState("7");
-  const [overdueDays, setOverdueDays] = useState("1");
+  const [error, setError] = useState("");
+  const [defaultLoanDays, setDefaultLoanDays] = useState(initialDefaultLoanDays);
+  const [overdueDays, setOverdueDays] = useState(initialOverdueDays);
+
+  useEffect(() => {
+    setDefaultLoanDays(initialDefaultLoanDays);
+    setOverdueDays(initialOverdueDays);
+  }, [initialDefaultLoanDays, initialOverdueDays]);
 
   const handleSave = async () => {
     setLoading(true);
+    setError("");
     try {
-      // TODO: Call server action to save settings
-      await new Promise((r) => setTimeout(r, 1000));
-      router.refresh();
-    } catch (error) {
-      console.error(error);
+      const result = await saveLoanSettings(defaultLoanDays, overdueDays);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("אירעה שגיאה. אנא נסה שוב");
     } finally {
       setLoading(false);
     }
@@ -220,6 +316,11 @@ export function LoanSettingsForm() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {error}
+          </div>
+        )}
         <Input
           id="defaultLoanDays"
           label="ימי השאלה ברירת מחדל"
