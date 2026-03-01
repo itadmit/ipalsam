@@ -130,15 +130,25 @@ export function NewRequestForm({
   const addRowFromSuggestion = (itemTypeId: string, departmentId: string) => {
     const avail = getAvailableForItem(itemTypeId);
     if (avail < 1) return;
-    setRows((prev) => [
-      ...prev,
-      {
-        id: generateRowId(),
-        departmentId,
-        itemTypeId,
-        quantity: 1,
-      },
-    ]);
+    setRows((prev) => {
+      const firstEmptyIdx = prev.findIndex((r) => !r.departmentId && !r.itemTypeId);
+      if (firstEmptyIdx >= 0) {
+        return prev.map((r, i) =>
+          i === firstEmptyIdx
+            ? { ...r, departmentId, itemTypeId, quantity: 1 }
+            : r
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: generateRowId(),
+          departmentId,
+          itemTypeId,
+          quantity: 1,
+        },
+      ];
+    });
   };
 
   const removeRow = (id: string) => {

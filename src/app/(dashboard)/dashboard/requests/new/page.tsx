@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { NewRequestForm } from "./new-request-form";
 import { db } from "@/db";
-import { departments, itemTypes, requests } from "@/db/schema";
-import { eq, inArray, sql, desc } from "drizzle-orm";
+import { departments, itemTypes, itemUnits, requests } from "@/db/schema";
+import { eq, inArray, sql, desc, and } from "drizzle-orm";
 
 export default async function NewRequestPage() {
   const session = await auth();
@@ -24,18 +24,43 @@ export default async function NewRequestPage() {
 
   const allItems = await db.query.itemTypes.findMany({
     where: eq(itemTypes.isActive, true),
-    columns: { id: true, name: true, departmentId: true, quantityAvailable: true },
+    columns: { id: true, name: true, departmentId: true, quantityAvailable: true, type: true },
   });
+
+  const serialAvailableCounts = new Map<string, number>();
+  const serialItemIds = allItems.filter((i) => i.type === "serial").map((i) => i.id);
+  if (serialItemIds.length > 0) {
+    const counts = await db
+      .select({
+        itemTypeId: itemUnits.itemTypeId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(itemUnits)
+      .where(
+        and(
+          inArray(itemUnits.itemTypeId, serialItemIds),
+          eq(itemUnits.status, "available")
+        )
+      )
+      .groupBy(itemUnits.itemTypeId);
+    for (const row of counts) {
+      serialAvailableCounts.set(row.itemTypeId, row.count);
+    }
+  }
 
   const itemsByDepartment: Record<string, { id: string; name: string; available: number }[]> = {};
   for (const item of allItems) {
     if (!itemsByDepartment[item.departmentId]) {
       itemsByDepartment[item.departmentId] = [];
     }
+    const available =
+      item.type === "serial"
+        ? serialAvailableCounts.get(item.id) ?? 0
+        : item.quantityAvailable ?? 0;
     itemsByDepartment[item.departmentId].push({
       id: item.id,
       name: item.name,
-      available: item.quantityAvailable || 0,
+      available,
     });
   }
 
