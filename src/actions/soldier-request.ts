@@ -101,14 +101,24 @@ export async function searchSoldiersByPhone(partialPhone: string) {
   const digits = partialPhone.replace(/\D/g, "");
   if (digits.length < 2) return { matches: [] };
 
-  const allSoldiers = await db.query.users.findMany({
-    where: and(eq(users.role, "soldier"), eq(users.isActive, true)),
-    columns: { id: true, phone: true, firstName: true, lastName: true },
+  const allUsers = await db.query.users.findMany({
+    where: eq(users.isActive, true),
+    columns: { id: true, phone: true, firstName: true, lastName: true, role: true },
   });
 
-  const matches = allSoldiers.filter((u) => {
-    const p = (u.phone || "").replace(/\D/g, "");
-    return p.includes(digits) || digits.includes(p) || p.endsWith(digits) || digits.endsWith(p);
+  const normalize = (s: string) => s.replace(/\D/g, "").slice(-10);
+  const digitsNorm = normalize(digits);
+
+  const matches = allUsers.filter((u) => {
+    const p = normalize(u.phone || "");
+    if (!p) return false;
+    return (
+      p === digitsNorm ||
+      p.endsWith(digitsNorm) ||
+      digitsNorm.endsWith(p) ||
+      p.includes(digitsNorm) ||
+      digitsNorm.includes(p)
+    );
   });
 
   return {
@@ -116,6 +126,7 @@ export async function searchSoldiersByPhone(partialPhone: string) {
       id: u.id,
       phone: u.phone || "",
       name: `${u.firstName || ""} ${u.lastName || ""}`.trim(),
+      role: u.role,
     })),
   };
 }

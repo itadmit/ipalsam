@@ -44,7 +44,9 @@ export function CheckoutFlow({
   const [signature, setSignature] = useState<string | null>(null);
 
   const [token, setToken] = useState<string | null>(null);
-  const [phoneMatches, setPhoneMatches] = useState<{ id: string; phone: string; name: string }[]>([]);
+  const [phoneMatches, setPhoneMatches] = useState<
+    { id: string; phone: string; name: string; role?: string }[]
+  >([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -75,15 +77,17 @@ export function CheckoutFlow({
   const searchPhone = useCallback(async (value: string) => {
     if (value.replace(/\D/g, "").length < 2) {
       setPhoneMatches([]);
+      setShowDropdown(false);
       return;
     }
     try {
       const result = await searchSoldiersByPhone(value);
       const matches = "matches" in result ? result.matches : [];
       setPhoneMatches(matches);
-      setShowDropdown(matches.length > 0);
+      setShowDropdown(true);
     } catch {
       setPhoneMatches([]);
+      setShowDropdown(true);
     }
   }, []);
 
@@ -92,20 +96,32 @@ export function CheckoutFlow({
     return () => clearTimeout(t);
   }, [phone, searchPhone]);
 
-  const selectMatch = useCallback(async (match: { id: string; phone: string; name: string }) => {
-    setPhone(match.phone);
-    setFullName(match.name);
-    setShowDropdown(false);
-    setPhoneMatches([]);
-    const result = await identifyOrCreateSoldier(match.phone);
-    if ("token" in result && result.token) {
-      setToken(result.token);
-    }
-  }, []);
+  const selectMatch = useCallback(
+    async (match: { id: string; phone: string; name: string; role?: string }) => {
+      if (match.role && match.role !== "soldier") {
+        setError("לא ניתן לבקש – מספר זה רשום כמשרד אחר (מפקד מחלקה/מפקדה). הזן טלפון של חייל.");
+        setShowDropdown(false);
+        return;
+      }
+      setPhone(match.phone);
+      setFullName(match.name);
+      setShowDropdown(false);
+      setPhoneMatches([]);
+      setError("");
+      const result = await identifyOrCreateSoldier(match.phone);
+      if ("token" in result && result.token) {
+        setToken(result.token);
+      } else if ("error" in result) {
+        setError(result.error || "");
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (token || phoneMatches.length !== 1 || !phone.trim()) return;
-    const digits = phone.replace(/\D/g, "");
+    if (phoneMatches[0].role && phoneMatches[0].role !== "soldier") return;
+    const digits = phone.replace(/\D/g, "").slice(-10);
     if (digits.length < 9) return;
     const m = phoneMatches[0];
     const mDigits = (m.phone || "").replace(/\D/g, "").slice(-10);
@@ -283,19 +299,30 @@ export function CheckoutFlow({
                     dir="ltr"
                     required
                   />
-                  {showDropdown && phoneMatches.length > 0 && (
+                  {showDropdown && phone.replace(/\D/g, "").length >= 2 && (
                     <div className="absolute top-full left-0 right-0 mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-48 overflow-auto">
-                      {phoneMatches.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          className="w-full px-4 py-2 text-right text-sm hover:bg-slate-50 flex flex-col items-end"
-                          onClick={() => selectMatch(m)}
-                        >
-                          <span className="font-medium">{m.name}</span>
-                          <span className="text-slate-500 text-xs" dir="ltr">{m.phone}</span>
-                        </button>
-                      ))}
+                      {phoneMatches.length > 0 ? (
+                        phoneMatches.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className="w-full px-4 py-2 text-right text-sm hover:bg-slate-50 flex flex-col items-end disabled:opacity-60"
+                            onClick={() => selectMatch(m)}
+                          >
+                            <span className="font-medium">{m.name}</span>
+                            <span className="text-slate-500 text-xs" dir="ltr">{m.phone}</span>
+                            {m.role && m.role !== "soldier" && (
+                              <span className="text-amber-600 text-xs mt-0.5">
+                                משרד אחר – לא ניתן לבקש
+                              </span>
+                            )}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                          לא נמצאו תוצאות
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
