@@ -131,6 +131,18 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// מחלקות שמוסר ציוד מציג בחנות שלו (צ'קבוקס)
+export const handoverDepartments = pgTable("handover_departments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  departmentId: uuid("department_id")
+    .references(() => departments.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // מחלקות שהחייל יכול לבקש מהן (צ'קבוקס)
 export const soldierDepartments = pgTable("soldier_departments", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -330,7 +342,19 @@ export const departmentsRelations = relations(departments, ({ one, many }) => ({
   categories: many(categories),
   itemTypes: many(itemTypes),
   requests: many(requests),
+  handoverDepartments: many(handoverDepartments),
   soldierDepartments: many(soldierDepartments),
+}));
+
+export const handoverDepartmentsRelations = relations(handoverDepartments, ({ one }) => ({
+  user: one(users, {
+    fields: [handoverDepartments.userId],
+    references: [users.id],
+  }),
+  department: one(departments, {
+    fields: [handoverDepartments.departmentId],
+    references: [departments.id],
+  }),
 }));
 
 export const soldierDepartmentsRelations = relations(soldierDepartments, ({ one }) => ({
@@ -355,6 +379,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   requests: many(requests),
   signatures: many(signatures),
+  handoverDepartments: many(handoverDepartments),
   soldierDepartments: many(soldierDepartments),
 }));
 

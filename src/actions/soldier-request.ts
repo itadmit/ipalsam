@@ -10,6 +10,7 @@ import {
   auditLogs,
   users,
   soldierDepartments,
+  handoverDepartments,
   departments,
 } from "@/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -47,6 +48,15 @@ export async function getPublicStoreData(handoverPhone: string) {
   });
   if (!handoverUser?.departmentId) return { error: "חנות לא נמצאה" };
 
+  const handoverDepts = await db.query.handoverDepartments.findMany({
+    where: eq(handoverDepartments.userId, handoverUser.id),
+    columns: { departmentId: true },
+  });
+  const storeDeptIds =
+    handoverDepts.length > 0
+      ? handoverDepts.map((d) => d.departmentId)
+      : [handoverUser.departmentId];
+
   const dept = await db.query.departments.findFirst({
     where: eq(departments.id, handoverUser.departmentId),
     columns: { id: true, name: true },
@@ -55,7 +65,7 @@ export async function getPublicStoreData(handoverPhone: string) {
 
   const items = await db.query.itemTypes.findMany({
     where: and(
-      eq(itemTypes.departmentId, handoverUser.departmentId),
+      inArray(itemTypes.departmentId, storeDeptIds),
       eq(itemTypes.isActive, true)
     ),
     columns: { id: true, name: true, departmentId: true, quantityAvailable: true, type: true },
@@ -84,6 +94,29 @@ export async function getPublicStoreData(handoverPhone: string) {
     storeName: `${handoverUser.firstName || ""} ${handoverUser.lastName || ""}`.trim() || "החנות",
     department: { id: dept.id, name: dept.name },
     items: itemsWithStock,
+  };
+}
+
+export async function searchSoldiersByPhone(partialPhone: string) {
+  const digits = partialPhone.replace(/\D/g, "");
+  if (digits.length < 3) return { matches: [] };
+
+  const allSoldiers = await db.query.users.findMany({
+    where: and(eq(users.role, "soldier"), eq(users.isActive, true)),
+    columns: { id: true, phone: true, firstName: true, lastName: true },
+  });
+
+  const matches = allSoldiers.filter((u) => {
+    const p = (u.phone || "").replace(/\D/g, "");
+    return p.includes(digits) || digits.includes(p) || p.endsWith(digits) || digits.endsWith(p);
+  });
+
+  return {
+    matches: matches.slice(0, 5).map((u) => ({
+      id: u.id,
+      phone: u.phone || "",
+      name: `${u.firstName || ""} ${u.lastName || ""}`.trim(),
+    })),
   };
 }
 
@@ -141,10 +174,21 @@ export async function identifyOrCreateSoldier(
 
   if (options?.firstName && options?.lastName) {
     const fullPhone = normalized.length === 9 ? `0${normalized}` : normalized;
-    const existingByPhone = await db.query.users.findFirst({
-      where: eq(users.phone, fullPhone),
+    const allByPhone = await db.query.users.findMany({
+      columns: { id: true, phone: true, role: true, isActive: true, firstName: true, lastName: true },
+    });
+    const existingByPhone = allByPhone.find((u) => {
+      const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+      return p === normalized || p.endsWith(normalized) || normalized.endsWith(p);
     });
     if (existingByPhone) {
+      if (existingByPhone.role === "soldier" && existingByPhone.isActive) {
+        const token = createRequestToken(existingByPhone.id);
+        return {
+          token,
+          soldierName: `${existingByPhone.firstName || ""} ${existingByPhone.lastName || ""}`.trim(),
+        };
+      }
       return { error: "מספר טלפון זה כבר רשום במערכת" };
     }
     const hashedPassword = await hash(fullPhone, 12);
@@ -184,7 +228,11 @@ export async function identifySoldierByBarcode(barcode: string) {
     return { error: "רק חיילים יכולים להשתמש בהשאלה מהירה" };
   }
   const token = createRequestToken(user.id);
-  return { token, soldierName: `${user.firstName} ${user.lastName}` };
+  return {
+    token,
+    soldierName: `${user.firstName} ${user.lastName}`,
+    soldierPhone: user.phone || "",
+  };
 }
 
 async function getSoldierAllowedDepartmentIds(userId: string): Promise<string[]> {
@@ -226,7 +274,14 @@ export async function getSoldierRequestData(token: string, fromPhone?: string) {
     if (!handoverUser?.departmentId) {
       return { error: "לינק לא תקין" };
     }
-    allowedDeptIds = [handoverUser.departmentId];
+    const handoverDepts = await db.query.handoverDepartments.findMany({
+      where: eq(handoverDepartments.userId, handoverUser.id),
+      columns: { departmentId: true },
+    });
+    allowedDeptIds =
+      handoverDepts.length > 0
+        ? handoverDepts.map((d) => d.departmentId)
+        : [handoverUser.departmentId];
   } else {
     allowedDeptIds = await getSoldierAllowedDepartmentIds(user.id);
   }
@@ -372,14 +427,21 @@ export async function createRequestBySoldier(
     const phoneDigits = fromPhone.replace(/\D/g, "").slice(-10);
     const allDeptCommanders = await db.query.users.findMany({
       where: eq(users.role, "dept_commander"),
-      columns: { phone: true, departmentId: true },
+      columns: { id: true, phone: true, departmentId: true },
     });
     const handoverUser = allDeptCommanders.find((u) => {
       const p = (u.phone || "").replace(/\D/g, "").slice(-10);
       return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
     });
     if (!handoverUser?.departmentId) return { error: "לינק לא תקין" };
-    allowedDeptIds = [handoverUser.departmentId];
+    const handoverDeptsReq = await db.query.handoverDepartments.findMany({
+      where: eq(handoverDepartments.userId, handoverUser.id),
+      columns: { departmentId: true },
+    });
+    allowedDeptIds =
+      handoverDeptsReq.length > 0
+        ? handoverDeptsReq.map((d) => d.departmentId)
+        : [handoverUser.departmentId];
   } else {
     allowedDeptIds = await getSoldierAllowedDepartmentIds(requester.id);
   }

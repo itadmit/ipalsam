@@ -8,13 +8,11 @@ import { ExternalLink } from "lucide-react";
 
 interface QuickRequestCardForUserProps {
   personalLink: string;
-  barcode?: string | null;
   role: "soldier" | "dept_commander";
 }
 
 export function QuickRequestCardForUser({
   personalLink,
-  barcode,
   role,
 }: QuickRequestCardForUserProps) {
   const isDeptCommander = role === "dept_commander";
@@ -50,31 +48,21 @@ export function QuickRequestCardForUser({
           </div>
         </div>
 
-        {role === "soldier" && (
-          <div className="pt-3 border-t border-emerald-200">
-            <p className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1.5">
-              <ScanBarcode className="w-4 h-4" />
-              ברקוד
-            </p>
-            {barcode ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <code className="px-3 py-2 rounded-lg bg-white border border-slate-200 font-mono text-lg">
-                    {barcode}
-                  </code>
-                  <CopyLinkButton url={barcode} label="העתק ברקוד" />
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  סרוק את הברקוד או הזן טלפון בדף ההשאלה המהירה
-                </p>
-              </>
-            ) : (
-              <p className="text-xs text-slate-500">
-                להגדרת ברקוד – הזן למעלה בשדה ברקוד ושמור
-              </p>
-            )}
+        <div className="pt-3 border-t border-emerald-200">
+          <p className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1.5">
+            <ScanBarcode className="w-4 h-4" />
+            ברקוד – הלינק להשאלה מהירה
+          </p>
+          <p className="text-xs text-slate-500 mb-2">
+            הדפס את הלינק כ-QR או סרוק כדי להגיע להשאלה מהירה
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm truncate">
+              {personalLink}
+            </code>
+            <CopyLinkButton url={personalLink} label="העתק" />
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

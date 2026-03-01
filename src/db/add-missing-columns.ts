@@ -51,7 +51,18 @@ async function addMissingColumns() {
     }
   }
 
-  // 4. soldier_departments
+  // 4. handover_departments
+  await sql`
+    CREATE TABLE IF NOT EXISTS handover_departments (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      department_id uuid NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+      created_at timestamp DEFAULT now() NOT NULL
+    )
+  `;
+  console.log("✅ handover_departments");
+
+  // 5. soldier_departments
   await sql`
     CREATE TABLE IF NOT EXISTS soldier_departments (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

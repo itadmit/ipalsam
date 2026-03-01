@@ -169,7 +169,6 @@ export default async function EditUserPage({
           {showQuickRequest && (
             <QuickRequestCardForUser
               personalLink={personalLink}
-              barcode={user.barcode}
               role={user.role === "dept_commander" ? "dept_commander" : "soldier"}
             />
           )}

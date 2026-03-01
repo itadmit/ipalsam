@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { departments, auditLogs } from "@/db/schema";
+import { departments, auditLogs, handoverDepartments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -148,5 +148,47 @@ export async function toggleDepartmentStatus(departmentId: string) {
   revalidatePath("/super-admin/departments");
 
   return { success: true, isActive: !department.isActive };
+}
+
+export async function updateHandoverSettings(
+  departmentId: string,
+  data: { autoApproveRequests?: boolean; storeDepartmentIds?: string[] }
+) {
+  const session = await auth();
+
+  if (!session?.user) return { error: "אין הרשאה" };
+
+  const canManage =
+    session.user.role === "super_admin" ||
+    session.user.role === "hq_commander" ||
+    (session.user.role === "dept_commander" && session.user.departmentId === departmentId);
+  if (!canManage) return { error: "אין הרשאה" };
+
+  if (data.autoApproveRequests !== undefined) {
+    await db
+      .update(departments)
+      .set({
+        autoApproveRequests: data.autoApproveRequests,
+        updatedAt: new Date(),
+      })
+      .where(eq(departments.id, departmentId));
+  }
+
+  if (data.storeDepartmentIds && Array.isArray(data.storeDepartmentIds)) {
+    await db.delete(handoverDepartments).where(eq(handoverDepartments.userId, session.user.id));
+    for (const deptId of data.storeDepartmentIds) {
+      if (deptId) {
+        await db.insert(handoverDepartments).values({
+          userId: session.user.id,
+          departmentId: deptId,
+        });
+      }
+    }
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/departments");
+
+  return { success: true };
 }
 

@@ -19,6 +19,7 @@ export default async function CheckoutPage({
       handoverPhone={phoneDigits}
       storeName={storeData.storeName}
       department={storeData.department}
+      items={storeData.items}
     />
   );
 }
