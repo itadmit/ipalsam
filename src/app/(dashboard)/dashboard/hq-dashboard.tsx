@@ -14,6 +14,7 @@ import {
   Plus,
   ArrowLeft,
 } from "lucide-react";
+import { QuickRequestCard } from "./quick-request-card";
 import type { SessionUser } from "@/types";
 import { db } from "@/db";
 import { departments, itemTypes, requests, users } from "@/db/schema";
@@ -305,6 +306,10 @@ export function HQDashboard({ user }: HQDashboardProps) {
           }
         >
           <CriticalAlerts />
+        </Suspense>
+
+        <Suspense fallback={<div className="h-48 rounded-xl bg-slate-100 animate-pulse" />}>
+          <QuickRequestCard userId={user.id} />
         </Suspense>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

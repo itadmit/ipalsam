@@ -13,6 +13,7 @@ import {
   History,
   CheckCircle,
 } from "lucide-react";
+import { QuickRequestCard } from "./quick-request-card";
 import type { SessionUser } from "@/types";
 import { getStatusColor, getStatusLabel } from "@/lib/utils";
 
@@ -262,6 +263,10 @@ export function SoldierDashboard({ user }: SoldierDashboardProps) {
           </Link>
         }
       />
+
+      <Suspense fallback={<div className="h-48 rounded-xl bg-slate-100 animate-pulse" />}>
+        <QuickRequestCard userId={user.id} />
+      </Suspense>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
