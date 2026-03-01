@@ -105,6 +105,7 @@ export const departments = pgTable("departments", {
   operatingHoursEnd: text("operating_hours_end"), // "17:00"
   allowImmediate: boolean("allow_immediate").default(true).notNull(),
   allowScheduled: boolean("allow_scheduled").default(true).notNull(),
+  autoApproveRequests: boolean("auto_approve_requests").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -121,11 +122,24 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").default("soldier").notNull(),
   departmentId: uuid("department_id").references(() => departments.id),
   baseId: uuid("base_id").references(() => bases.id),
+  barcode: text("barcode").unique(), // ברקוד לזיהוי חייל בהשאלה מהירה
   isActive: boolean("is_active").default(true).notNull(),
   mustChangePassword: boolean("must_change_password").default(true).notNull(),
   lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// מחלקות שהחייל יכול לבקש מהן (צ'קבוקס)
+export const soldierDepartments = pgTable("soldier_departments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  departmentId: uuid("department_id")
+    .references(() => departments.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // קטגוריות
@@ -315,6 +329,18 @@ export const departmentsRelations = relations(departments, ({ one, many }) => ({
   categories: many(categories),
   itemTypes: many(itemTypes),
   requests: many(requests),
+  soldierDepartments: many(soldierDepartments),
+}));
+
+export const soldierDepartmentsRelations = relations(soldierDepartments, ({ one }) => ({
+  user: one(users, {
+    fields: [soldierDepartments.userId],
+    references: [users.id],
+  }),
+  department: one(departments, {
+    fields: [soldierDepartments.departmentId],
+    references: [departments.id],
+  }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -328,6 +354,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   requests: many(requests),
   signatures: many(signatures),
+  soldierDepartments: many(soldierDepartments),
 }));
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({

@@ -15,6 +15,7 @@ interface DepartmentSettingsFormProps {
     operatingHoursEnd: string;
     allowImmediate: boolean;
     allowScheduled: boolean;
+    autoApproveRequests: boolean;
   };
 }
 
@@ -29,6 +30,7 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
   const [operatingHoursEnd, setOperatingHoursEnd] = useState(department.operatingHoursEnd);
   const [allowImmediate, setAllowImmediate] = useState(department.allowImmediate);
   const [allowScheduled, setAllowScheduled] = useState(department.allowScheduled);
+  const [autoApproveRequests, setAutoApproveRequests] = useState(department.autoApproveRequests);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +45,7 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
         operatingHoursEnd,
         allowImmediate,
         allowScheduled,
+        autoApproveRequests,
       });
 
       if (result.error) {
@@ -134,6 +137,18 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
             />
             <label htmlFor="allowScheduled" className="text-sm text-slate-700">
               אפשר השאלות מתוזמנות
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="autoApproveRequests"
+              checked={autoApproveRequests}
+              onChange={(e) => setAutoApproveRequests(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <label htmlFor="autoApproveRequests" className="text-sm text-slate-700">
+              אשר אוטומטית בקשות מהחיילים (השאלה מהירה)
             </label>
           </div>
         </div>

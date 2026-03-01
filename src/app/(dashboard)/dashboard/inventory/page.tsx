@@ -18,6 +18,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Plus, Package, Edit, Eye, FileSpreadsheet } from "lucide-react";
 import { FilterButton, ExportButton } from "./inventory-actions";
+import { SyncInventoryButton } from "./sync-inventory-button";
 import { db } from "@/db";
 import { itemTypes } from "@/db/schema";
 import { like, or } from "drizzle-orm";
@@ -168,6 +169,10 @@ export default async function InventoryPage({
         description="ניהול כל הציוד במערכת"
         actions={
           <div className="flex gap-2">
+            {(session.user.role === "super_admin" ||
+              session.user.role === "hq_commander") && (
+              <SyncInventoryButton />
+            )}
             <ExportButton />
             <Link href="/dashboard/inventory/new/bulk">
               <Button variant="outline">

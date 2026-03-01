@@ -15,7 +15,9 @@
     "db:reset": "npx tsx src/db/reset.ts",
     "db:reset-inventory": "npx tsx src/db/reset-inventory.ts",
     "db:update-users": "npx tsx src/db/update-users.ts",
-    "db:fresh": "npm run db:reset && npm run db:seed"
+    "db:fresh": "npm run db:reset && npm run db:seed",
+    "db:fix-approved": "npx tsx src/db/fix-approved-requests.ts",
+    "db:sync-inventory": "npx tsx src/db/sync-inventory.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

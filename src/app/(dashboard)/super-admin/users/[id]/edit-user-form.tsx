@@ -16,6 +16,8 @@ interface EditUserFormProps {
     email: string | null;
     role: "super_admin" | "hq_commander" | "dept_commander" | "soldier";
     departmentId: string | null;
+    barcode?: string;
+    soldierDepartmentIds?: string[];
   };
   departments: { id: string; name: string }[];
   isSuperAdmin: boolean;
@@ -32,6 +34,10 @@ export function EditUserForm({ user, departments, isSuperAdmin }: EditUserFormPr
   const [email, setEmail] = useState(user.email || "");
   const [role, setRole] = useState(user.role);
   const [departmentId, setDepartmentId] = useState(user.departmentId || "");
+  const [barcode, setBarcode] = useState(user.barcode || "");
+  const [soldierDepartmentIds, setSoldierDepartmentIds] = useState<string[]>(
+    user.soldierDepartmentIds || []
+  );
 
   const roleOptions = [
     { value: "soldier", label: "חייל" },
@@ -134,6 +140,46 @@ export function EditUserForm({ user, departments, isSuperAdmin }: EditUserFormPr
             placeholder="בחר מחלקה"
             required
           />
+        )}
+
+        {role === "soldier" && (
+          <>
+            <Input
+              id="barcode"
+              label="ברקוד (השאלה מהירה)"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              placeholder="קוד ברקוד"
+              dir="ltr"
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                מחלקות להשאלה מהירה (צ׳קבוקס)
+              </label>
+              <p className="text-xs text-slate-500 mb-2">
+                בחר מאילו מחלקות החייל יכול לבקש בהשאלה מהירה. אם ריק - משתמש במחלקה שלו.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {departments.map((d) => (
+                  <label key={d.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={soldierDepartmentIds.includes(d.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSoldierDepartmentIds((prev) => [...prev, d.id]);
+                        } else {
+                          setSoldierDepartmentIds((prev) => prev.filter((r) => r !== d.id));
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                    />
+                    <span className="text-sm">{d.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>
 

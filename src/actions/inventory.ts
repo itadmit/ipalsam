@@ -1,7 +1,14 @@
 "use server";
 
 import { db } from "@/db";
-import { itemTypes, itemUnits, movements, auditLogs, signatures, requests } from "@/db/schema";
+import {
+  itemTypes,
+  itemUnits,
+  movements,
+  auditLogs,
+  signatures,
+  requests,
+} from "@/db/schema";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { auth, canManageDepartment } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -343,6 +350,58 @@ export async function updateItemType(
   revalidatePath(`/dashboard/inventory/${itemTypeId}`);
 
   return { success: true };
+}
+
+export async function syncInventoryQuantities() {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+  if (
+    session.user.role !== "super_admin" &&
+    session.user.role !== "hq_commander"
+  ) {
+    return { error: "אין הרשאה" };
+  }
+
+  const quantityItems = await db.query.itemTypes.findMany({
+    where: eq(itemTypes.type, "quantity"),
+    columns: { id: true, name: true, quantityTotal: true, quantityAvailable: true, quantityInUse: true },
+  });
+
+  let fixed = 0;
+  for (const item of quantityItems) {
+    const total = item.quantityTotal || 0;
+    const inUseRows = await db
+      .select({ sum: sql<number>`COALESCE(SUM(${requests.quantity}), 0)` })
+      .from(requests)
+      .where(
+        and(
+          eq(requests.itemTypeId, item.id),
+          eq(requests.status, "handed_over")
+        )
+      );
+    const inUse = Number(inUseRows[0]?.sum ?? 0);
+    const available = Math.max(0, total - inUse);
+    const prevAvail = item.quantityAvailable ?? 0;
+    const prevInUse = item.quantityInUse ?? 0;
+
+    if (prevAvail !== available || prevInUse !== inUse) {
+      await db
+        .update(itemTypes)
+        .set({
+          quantityAvailable: available,
+          quantityInUse: inUse,
+          updatedAt: new Date(),
+        })
+        .where(eq(itemTypes.id, item.id));
+      fixed++;
+    }
+  }
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/departments");
+
+  return { success: true, fixed };
 }
 
 export async function deleteItemType(itemTypeId: string) {

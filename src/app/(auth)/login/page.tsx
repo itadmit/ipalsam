@@ -92,6 +92,11 @@ export default async function LoginPage() {
           </div>
 
           <p className="text-center text-sm text-slate-500 mt-6">
+            <a href="/request" className="text-emerald-600 hover:underline">
+              השאלה מהירה (חיילים)
+            </a>
+          </p>
+          <p className="text-center text-sm text-slate-500 mt-2">
             © 2026 ipalsam. כל הזכויות שמורות.
           </p>
         </div>

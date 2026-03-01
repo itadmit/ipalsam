@@ -10,7 +10,7 @@ import { ArrowRight, User, Key, Shield } from "lucide-react";
 import { getRoleLabel, formatPhone, formatDate } from "@/lib/utils";
 import { EditUserForm } from "./edit-user-form";
 import { db } from "@/db";
-import { users, departments } from "@/db/schema";
+import { users, departments, soldierDepartments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { SessionUser } from "@/types";
 
@@ -38,6 +38,13 @@ export default async function EditUserPage({
     notFound();
   }
 
+  const soldierDepts = user.role === "soldier"
+    ? await db.query.soldierDepartments.findMany({
+        where: eq(soldierDepartments.userId, id),
+        columns: { departmentId: true },
+      })
+    : [];
+
   const departmentsList = await db.query.departments.findMany({
     where: eq(departments.isActive, true),
     columns: { id: true, name: true },
@@ -64,6 +71,8 @@ export default async function EditUserPage({
     role: user.role as SessionUser["role"],
     departmentId: user.departmentId,
     departmentName: user.department?.name || null,
+    barcode: user.barcode || "",
+    soldierDepartmentIds: soldierDepts.map((d) => d.departmentId),
     isActive: user.isActive,
     lastLogin: user.lastLogin,
     createdAt: user.createdAt,

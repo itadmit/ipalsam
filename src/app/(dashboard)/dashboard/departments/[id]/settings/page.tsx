@@ -43,10 +43,11 @@ export default async function DepartmentSettingsPage({
     id: department.id,
     name: department.name,
     description: department.description || "",
-    operatingHoursStart: "08:00", // TODO: Add to schema if needed
-    operatingHoursEnd: "17:00",
+    operatingHoursStart: department.operatingHoursStart || "08:00",
+    operatingHoursEnd: department.operatingHoursEnd || "17:00",
     allowImmediate: department.allowImmediate,
     allowScheduled: department.allowScheduled,
+    autoApproveRequests: department.autoApproveRequests ?? false,
   };
 
   return (

@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { users, auditLogs } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, auditLogs, soldierDepartments } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { hash } from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -109,8 +109,21 @@ export async function updateUser(
   if (data.departmentId !== undefined)
     updateData.departmentId = data.departmentId || null;
   if (data.baseId !== undefined) updateData.baseId = data.baseId || null;
+  if (data.barcode !== undefined) updateData.barcode = data.barcode || null;
 
   await db.update(users).set(updateData).where(eq(users.id, userId));
+
+  if (data.soldierDepartmentIds && Array.isArray(data.soldierDepartmentIds)) {
+    await db.delete(soldierDepartments).where(eq(soldierDepartments.userId, userId));
+    for (const deptId of data.soldierDepartmentIds) {
+      if (deptId) {
+        await db.insert(soldierDepartments).values({
+          userId,
+          departmentId: deptId,
+        });
+      }
+    }
+  }
 
   // Log action
   await db.insert(auditLogs).values({

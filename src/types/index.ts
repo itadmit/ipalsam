@@ -90,6 +90,8 @@ export type CreateUserFormData = {
   role: "super_admin" | "hq_commander" | "dept_commander" | "soldier";
   departmentId?: string;
   baseId?: string;
+  barcode?: string;
+  soldierDepartmentIds?: string[];
 };
 
 export type CreateDepartmentFormData = {
@@ -100,6 +102,7 @@ export type CreateDepartmentFormData = {
   operatingHoursEnd?: string;
   allowImmediate: boolean;
   allowScheduled: boolean;
+  autoApproveRequests?: boolean;
 };
 
 export type CreateItemTypeFormData = {

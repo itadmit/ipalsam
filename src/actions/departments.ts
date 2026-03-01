@@ -51,12 +51,13 @@ export async function updateDepartment(
 ) {
   const session = await auth();
 
-  if (
-    !session?.user ||
-    (session.user.role !== "super_admin" && session.user.role !== "hq_commander")
-  ) {
-    return { error: "אין הרשאה" };
-  }
+  if (!session?.user) return { error: "אין הרשאה" };
+
+  const canManage =
+    session.user.role === "super_admin" ||
+    session.user.role === "hq_commander" ||
+    (session.user.role === "dept_commander" && session.user.departmentId === departmentId);
+  if (!canManage) return { error: "אין הרשאה" };
 
   const existingDepartment = await db.query.departments.findFirst({
     where: eq(departments.id, departmentId),
@@ -81,6 +82,8 @@ export async function updateDepartment(
     updateData.allowImmediate = data.allowImmediate;
   if (data.allowScheduled !== undefined)
     updateData.allowScheduled = data.allowScheduled;
+  if (data.autoApproveRequests !== undefined)
+    updateData.autoApproveRequests = data.autoApproveRequests;
 
   await db
     .update(departments)
