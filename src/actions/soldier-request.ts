@@ -164,22 +164,22 @@ export async function identifyOrCreateSoldier(
     return { error: "מספר טלפון לא תקין" };
   }
 
-  const allSoldiers = await db.query.users.findMany({
-    where: eq(users.role, "soldier"),
+  const allRequesters = await db.query.users.findMany({
+    where: inArray(users.role, ["soldier", "dept_commander"]),
     columns: { id: true, phone: true, firstName: true, lastName: true, isActive: true },
   });
 
-  const soldier = allSoldiers.find((u) => {
+  const requester = allRequesters.find((u) => {
     const p = (u.phone || "").replace(/\D/g, "").slice(-10);
     return p === normalized || p.endsWith(normalized) || normalized.endsWith(p);
   });
 
-  if (soldier?.isActive) {
-    const token = createRequestToken(soldier.id);
-    return { token, soldierName: `${soldier.firstName} ${soldier.lastName}` };
+  if (requester?.isActive) {
+    const token = createRequestToken(requester.id);
+    return { token, soldierName: `${requester.firstName} ${requester.lastName}` };
   }
 
-  if (soldier && !soldier.isActive) {
+  if (requester && !requester.isActive) {
     return { error: "המשתמש לא פעיל" };
   }
 
@@ -193,7 +193,10 @@ export async function identifyOrCreateSoldier(
       return p === normalized || p.endsWith(normalized) || normalized.endsWith(p);
     });
     if (existingByPhone) {
-      if (existingByPhone.role === "soldier" && existingByPhone.isActive) {
+      const canRequest =
+        (existingByPhone.role === "soldier" || existingByPhone.role === "dept_commander") &&
+        existingByPhone.isActive;
+      if (canRequest) {
         const token = createRequestToken(existingByPhone.id);
         return {
           token,

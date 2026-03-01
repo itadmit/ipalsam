@@ -98,11 +98,6 @@ export function CheckoutFlow({
 
   const selectMatch = useCallback(
     async (match: { id: string; phone: string; name: string; role?: string }) => {
-      if (match.role && match.role !== "soldier") {
-        setError("לא ניתן לבקש – מספר זה רשום כמשרד אחר (מפקד מחלקה/מפקדה). הזן טלפון של חייל.");
-        setShowDropdown(false);
-        return;
-      }
       setPhone(match.phone);
       setFullName(match.name);
       setShowDropdown(false);
@@ -120,7 +115,6 @@ export function CheckoutFlow({
 
   useEffect(() => {
     if (token || phoneMatches.length !== 1 || !phone.trim()) return;
-    if (phoneMatches[0].role && phoneMatches[0].role !== "soldier") return;
     const digits = phone.replace(/\D/g, "").slice(-10);
     if (digits.length < 9) return;
     const m = phoneMatches[0];
@@ -306,16 +300,11 @@ export function CheckoutFlow({
                           <button
                             key={m.id}
                             type="button"
-                            className="w-full px-4 py-2 text-right text-sm hover:bg-slate-50 flex flex-col items-end disabled:opacity-60"
+                            className="w-full px-4 py-2 text-right text-sm hover:bg-slate-50 flex flex-col items-end"
                             onClick={() => selectMatch(m)}
                           >
                             <span className="font-medium">{m.name}</span>
                             <span className="text-slate-500 text-xs" dir="ltr">{m.phone}</span>
-                            {m.role && m.role !== "soldier" && (
-                              <span className="text-amber-600 text-xs mt-0.5">
-                                משרד אחר – לא ניתן לבקש
-                              </span>
-                            )}
                           </button>
                         ))
                       ) : (
