@@ -165,7 +165,7 @@ export async function identifyOrCreateSoldier(
   }
 
   const allRequesters = await db.query.users.findMany({
-    where: inArray(users.role, ["soldier", "dept_commander"]),
+    where: inArray(users.role, ["soldier", "dept_commander", "hq_commander", "super_admin"]),
     columns: { id: true, phone: true, firstName: true, lastName: true, isActive: true },
   });
 
@@ -194,8 +194,9 @@ export async function identifyOrCreateSoldier(
     });
     if (existingByPhone) {
       const canRequest =
-        (existingByPhone.role === "soldier" || existingByPhone.role === "dept_commander") &&
-        existingByPhone.isActive;
+        ["soldier", "dept_commander", "hq_commander", "super_admin"].includes(
+          existingByPhone.role || ""
+        ) && existingByPhone.isActive;
       if (canRequest) {
         const token = createRequestToken(existingByPhone.id);
         return {
