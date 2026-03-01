@@ -61,6 +61,8 @@ export function EditUserForm({ user, departments, isSuperAdmin }: EditUserFormPr
         email: email || undefined,
         role,
         departmentId: needsDepartment ? departmentId : undefined,
+        barcode: role === "soldier" ? barcode || undefined : undefined,
+        soldierDepartmentIds: role === "soldier" ? soldierDepartmentIds : undefined,
       });
 
       if (result.error) {

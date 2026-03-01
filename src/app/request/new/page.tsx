@@ -6,15 +6,16 @@ import { getSoldierRequestData } from "@/actions/soldier-request";
 export default async function SoldierRequestNewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; from?: string }>;
 }) {
   const params = await searchParams;
   const token = params.token;
+  const fromPhone = params.from;
   if (!token) {
     redirect("/request");
   }
 
-  const data = await getSoldierRequestData(token);
+  const data = await getSoldierRequestData(token, fromPhone);
   if ("error" in data) {
     redirect(`/request?error=${encodeURIComponent(data.error || "שגיאה")}`);
   }

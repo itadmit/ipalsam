@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { auth, canAccessSuperAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, User, Key, Shield } from "lucide-react";
+import { QuickRequestCardForUser } from "./quick-request-card";
 import { getRoleLabel, formatPhone, formatDate } from "@/lib/utils";
 import { EditUserForm } from "./edit-user-form";
 import { db } from "@/db";
@@ -52,6 +54,18 @@ export default async function EditUserPage({
   });
 
   const isSuperAdmin = session.user.role === "super_admin";
+
+  const headersList = await headers();
+  const host = headersList.get("host") || "localhost:3000";
+  const protocol = headersList.get("x-forwarded-proto") || "http";
+  const baseUrl = `${protocol}://${host}`;
+  const phoneDigits = (user.phone || "").replace(/\D/g, "").slice(-10);
+  const personalLink = phoneDigits
+    ? `${baseUrl}/request/${phoneDigits}`
+    : `${baseUrl}/request`;
+
+  const showQuickRequest =
+    (user.role === "dept_commander" && user.departmentId) || user.role === "soldier";
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -151,6 +165,14 @@ export default async function EditUserPage({
               </div>
             </CardContent>
           </Card>
+
+          {showQuickRequest && (
+            <QuickRequestCardForUser
+              personalLink={personalLink}
+              barcode={user.barcode}
+              role={user.role === "dept_commander" ? "dept_commander" : "soldier"}
+            />
+          )}
 
           <Card>
             <CardHeader>

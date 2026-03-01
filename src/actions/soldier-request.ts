@@ -68,7 +68,7 @@ async function getSoldierAllowedDepartmentIds(userId: string): Promise<string[]>
   return user?.departmentId ? [user.departmentId] : [];
 }
 
-export async function getSoldierRequestData(token: string) {
+export async function getSoldierRequestData(token: string, fromPhone?: string) {
   const verified = verifyRequestToken(token);
   if (!verified) return { error: "פג תוקף. אנא הזן טלפון או סרוק ברקוד מחדש" };
 
@@ -78,7 +78,26 @@ export async function getSoldierRequestData(token: string) {
   });
   if (!user || !user.phone) return { error: "חייל לא נמצא" };
 
-  const allowedDeptIds = await getSoldierAllowedDepartmentIds(user.id);
+  let allowedDeptIds: string[];
+
+  if (fromPhone) {
+    const phoneDigits = fromPhone.replace(/\D/g, "").slice(-10);
+    const allDeptCommanders = await db.query.users.findMany({
+      where: eq(users.role, "dept_commander"),
+      columns: { id: true, phone: true, departmentId: true },
+    });
+    const handoverUser = allDeptCommanders.find((u) => {
+      const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+      return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
+    });
+    if (!handoverUser?.departmentId) {
+      return { error: "לינק לא תקין" };
+    }
+    allowedDeptIds = [handoverUser.departmentId];
+  } else {
+    allowedDeptIds = await getSoldierAllowedDepartmentIds(user.id);
+  }
+
   if (allowedDeptIds.length === 0) {
     return { error: "לא הוגדרו מחלקות להשאלה עבור חייל זה" };
   }
