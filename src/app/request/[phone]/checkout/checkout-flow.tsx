@@ -49,6 +49,7 @@ export function CheckoutFlow({
   >([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const selectingRef = useRef(false);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -84,10 +85,10 @@ export function CheckoutFlow({
       const result = await searchSoldiersByPhone(value);
       const matches = "matches" in result ? result.matches : [];
       setPhoneMatches(matches);
-      setShowDropdown(true);
+      if (!selectingRef.current) setShowDropdown(true);
     } catch {
       setPhoneMatches([]);
-      setShowDropdown(true);
+      if (!selectingRef.current) setShowDropdown(true);
     }
   }, []);
 
@@ -98,16 +99,21 @@ export function CheckoutFlow({
 
   const selectMatch = useCallback(
     async (match: { id: string; phone: string; name: string; role?: string }) => {
+      selectingRef.current = true;
       setPhone(match.phone);
       setFullName(match.name);
       setShowDropdown(false);
       setPhoneMatches([]);
       setError("");
-      const result = await identifyOrCreateSoldier(match.phone);
-      if ("token" in result && result.token) {
-        setToken(result.token);
-      } else if ("error" in result) {
-        setError(result.error || "");
+      try {
+        const result = await identifyOrCreateSoldier(match.phone);
+        if ("token" in result && result.token) {
+          setToken(result.token);
+        } else if ("error" in result) {
+          setError(result.error || "");
+        }
+      } finally {
+        selectingRef.current = false;
       }
     },
     []
