@@ -944,3 +944,99 @@ export async function updateRequestStatusToClosed(
   return { success: true };
 }
 
+const REQUEST_STATUSES = [
+  "draft",
+  "submitted",
+  "approved",
+  "rejected",
+  "ready_for_pickup",
+  "handed_over",
+  "returned",
+  "closed",
+  "overdue",
+] as const;
+
+export async function updateRequestStatus(
+  requestId: string,
+  requestGroupId: string | null,
+  newStatus: string
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+  if (!REQUEST_STATUSES.includes(newStatus as (typeof REQUEST_STATUSES)[number])) {
+    return { error: "סטטוס לא תקין" };
+  }
+
+  const userRole = session.user.role as SessionUser["role"];
+  const userDeptId = session.user.departmentId;
+
+  const groupRows = requestGroupId
+    ? await db
+        .select({ id: requests.id, departmentId: requests.departmentId })
+        .from(requests)
+        .where(eq(requests.requestGroupId, requestGroupId))
+    : await db
+        .select({ id: requests.id, departmentId: requests.departmentId })
+        .from(requests)
+        .where(eq(requests.id, requestId));
+
+  const groupRequests = await db.query.requests.findMany({
+    where: requestGroupId
+      ? eq(requests.requestGroupId, requestGroupId)
+      : eq(requests.id, requestId),
+    with: { itemType: true },
+  });
+
+  for (const { departmentId } of groupRows) {
+    if (!canManageDepartment(userRole, userDeptId, departmentId)) {
+      return { error: "אין הרשאה" };
+    }
+  }
+
+  if (newStatus === "handed_over") {
+    for (const req of groupRequests) {
+      if (req.status !== "returned") continue;
+      if (req.itemType?.type === "quantity") {
+        await db
+          .update(itemTypes)
+          .set({
+            quantityAvailable: sql`${itemTypes.quantityAvailable} - ${req.quantity}`,
+            quantityInUse: sql`${itemTypes.quantityInUse} + ${req.quantity}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(itemTypes.id, req.itemTypeId));
+      } else if (req.itemUnitId) {
+        await db
+          .update(itemUnits)
+          .set({
+            status: "in_use",
+            currentHolderId: req.requesterId,
+            updatedAt: new Date(),
+          })
+          .where(eq(itemUnits.id, req.itemUnitId));
+      }
+    }
+  }
+
+  for (const { id } of groupRows) {
+    await db
+      .update(requests)
+      .set({
+        status: newStatus as (typeof REQUEST_STATUSES)[number],
+        ...(newStatus === "handed_over" && {
+          handedOverAt: new Date(),
+          handedOverById: session.user.id,
+          returnedAt: null,
+          receivedById: null,
+        }),
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, id));
+  }
+
+  revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  return { success: true };
+}

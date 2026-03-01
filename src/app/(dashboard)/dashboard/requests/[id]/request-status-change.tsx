@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import { getStatusLabel } from "@/lib/utils";
 import {
   approveRequest,
@@ -21,27 +21,26 @@ import {
   rejectGroup,
   returnGroup,
   updateRequestStatusToClosed,
+  updateRequestStatus,
 } from "@/actions/requests";
 
-function getNextStatusOptions(current: string): { value: string; label: string }[] {
-  const options: { value: string; label: string }[] = [];
-  switch (current) {
-    case "submitted":
-      options.push({ value: "approved", label: getStatusLabel("approved") });
-      options.push({ value: "rejected", label: getStatusLabel("rejected") });
-      break;
-    case "approved":
-    case "handed_over":
-      options.push({ value: "returned", label: "סמן כהוחזר" });
-      break;
-    case "returned":
-    case "rejected":
-      options.push({ value: "closed", label: getStatusLabel("closed") });
-      break;
-    default:
-      break;
-  }
-  return options;
+const ALL_STATUSES = [
+  "draft",
+  "submitted",
+  "approved",
+  "rejected",
+  "ready_for_pickup",
+  "handed_over",
+  "returned",
+  "closed",
+  "overdue",
+];
+
+function getAllStatusOptions(current: string): { value: string; label: string }[] {
+  return ALL_STATUSES.filter((s) => s !== current).map((value) => ({
+    value,
+    label: value === "returned" ? "הוחזר" : getStatusLabel(value),
+  }));
 }
 
 interface RequestStatusChangeProps {
@@ -65,8 +64,10 @@ export function RequestStatusChange({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  const nextOptions = getNextStatusOptions(status);
-  const hasOptions = nextOptions.length > 0 && canApprove;
+  const statusOptions = getAllStatusOptions(status);
+  const hasOptions = statusOptions.length > 0 && canApprove;
+  const canMarkReturned =
+    canApprove && (status === "handed_over" || status === "approved");
 
   const handleStatusChange = async (newStatus: string) => {
     if (newStatus === status) return;
@@ -92,6 +93,8 @@ export function RequestStatusChange({
           requestGroupId,
           newStatus as "closed" | "overdue"
         );
+      } else {
+        result = await updateRequestStatus(requestId, requestGroupId, newStatus);
       }
 
       if (result.success) {
@@ -100,6 +103,21 @@ export function RequestStatusChange({
       } else if (result.error) {
         alert(result.error);
       }
+    } catch (e) {
+      console.error(e);
+      alert("אירעה שגיאה");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkReturned = async () => {
+    const groupKey = requestGroupId ?? requestId;
+    setLoading(true);
+    try {
+      const result = await returnGroup(groupKey);
+      if (result.success) router.refresh();
+      else if (result.error) alert(result.error);
     } catch (e) {
       console.error(e);
       alert("אירעה שגיאה");
@@ -136,6 +154,18 @@ export function RequestStatusChange({
   return (
     <>
       <div className="flex flex-col gap-3">
+        {canMarkReturned && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+            onClick={handleMarkReturned}
+            disabled={loading}
+          >
+            <RotateCcw className="w-4 h-4" />
+            הוחזר
+          </Button>
+        )}
         <button
           type="button"
           onClick={() => hasOptions && setExpanded((e) => !e)}
@@ -162,7 +192,7 @@ export function RequestStatusChange({
                 const v = e.target.value;
                 if (v) handleStatusChange(v);
               }}
-              options={nextOptions}
+              options={statusOptions}
               placeholder="בחר סטטוס..."
               disabled={loading}
             />
