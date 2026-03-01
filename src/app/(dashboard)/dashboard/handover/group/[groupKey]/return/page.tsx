@@ -157,6 +157,8 @@ export default async function GroupReturnPage({
                       <SingleItemReturnButton
                         requestId={req.id}
                         itemName={req.itemType?.name || ""}
+                        quantity={req.quantity}
+                        itemType={req.itemType?.type || "quantity"}
                       />
                     ) : req.status === "returned" ? (
                       <span className="text-xs text-emerald-600 font-medium shrink-0">הוחזר</span>

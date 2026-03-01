@@ -438,6 +438,7 @@ export async function createRequestBySoldier(
   if (!requester || !requester.isActive) return { error: "חייל לא נמצא" };
 
   let allowedDeptIds: string[];
+  let storeAutoApprove: boolean | undefined;
   if (fromPhone) {
     const phoneDigits = fromPhone.replace(/\D/g, "").slice(-10);
     const allDeptCommanders = await db.query.users.findMany({
@@ -457,6 +458,11 @@ export async function createRequestBySoldier(
       handoverDeptsReq.length > 0
         ? handoverDeptsReq.map((d) => d.departmentId)
         : [handoverUser.departmentId];
+    const storeDept = await db.query.departments.findFirst({
+      where: eq(departments.id, handoverUser.departmentId),
+      columns: { autoApproveRequests: true },
+    });
+    storeAutoApprove = storeDept?.autoApproveRequests ?? false;
   } else {
     allowedDeptIds = await getSoldierAllowedDepartmentIds(requester.id);
   }
@@ -525,14 +531,21 @@ export async function createRequestBySoldier(
       }
     }
 
-    let autoApprove = deptAutoApprove.get(row.departmentId);
-    if (autoApprove === undefined) {
-      const dept = await db.query.departments.findFirst({
-        where: eq(departments.id, row.departmentId),
-        columns: { autoApproveRequests: true },
-      });
-      autoApprove = dept?.autoApproveRequests ?? false;
-      deptAutoApprove.set(row.departmentId, autoApprove);
+    let autoApprove: boolean;
+    if (storeAutoApprove !== undefined) {
+      autoApprove = storeAutoApprove;
+    } else {
+      const cached = deptAutoApprove.get(row.departmentId);
+      if (cached !== undefined) {
+        autoApprove = cached;
+      } else {
+        const dept = await db.query.departments.findFirst({
+          where: eq(departments.id, row.departmentId),
+          columns: { autoApproveRequests: true },
+        });
+        autoApprove = dept?.autoApproveRequests ?? false;
+        deptAutoApprove.set(row.departmentId, autoApprove);
+      }
     }
 
     const [newRequest] = await db

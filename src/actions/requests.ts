@@ -801,7 +801,7 @@ export async function returnGroup(groupKey: string) {
 export async function returnItem(
   requestId: string,
   signature: { confirmed: boolean; pin?: string },
-  notes?: string
+  options?: { returnQuantity?: number; notes?: string }
 ) {
   const session = await auth();
 
@@ -829,13 +829,21 @@ export async function returnItem(
     return { error: "לא ניתן להחזיר השאלה זו" };
   }
 
+  const notes = options?.notes;
+  const isQuantityItem = request.itemType?.type === "quantity";
+  const returnQty =
+    options?.returnQuantity != null && isQuantityItem
+      ? Math.min(Math.max(1, Math.floor(options.returnQuantity)), request.quantity)
+      : request.quantity;
+  const isPartialReturn = isQuantityItem && returnQty < request.quantity;
+
   // Update inventory
   if (request.itemType?.type === "quantity") {
     await db
       .update(itemTypes)
       .set({
-        quantityAvailable: sql`${itemTypes.quantityAvailable} + ${request.quantity}`,
-        quantityInUse: sql`${itemTypes.quantityInUse} - ${request.quantity}`,
+        quantityAvailable: sql`${itemTypes.quantityAvailable} + ${returnQty}`,
+        quantityInUse: sql`${itemTypes.quantityInUse} - ${returnQty}`,
         updatedAt: new Date(),
       })
       .where(eq(itemTypes.id, request.itemTypeId));
@@ -855,10 +863,10 @@ export async function returnItem(
     .insert(movements)
     .values({
       itemTypeId: request.itemTypeId,
-      itemUnitId: request.itemUnitId,
+      itemUnitId: isPartialReturn ? null : request.itemUnitId,
       requestId,
       type: "return",
-      quantity: request.quantity,
+      quantity: returnQty,
       toDepartmentId: request.departmentId,
       fromUserId: request.requesterId,
       executedById: session.user.id,
@@ -876,16 +884,26 @@ export async function returnItem(
     pin: signature.pin || null,
   });
 
-  // Update request
-  await db
-    .update(requests)
-    .set({
-      status: "returned",
-      returnedAt: new Date(),
-      receivedById: session.user.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(requests.id, requestId));
+  // Update request - partial: reduce quantity; full: mark returned
+  if (isPartialReturn) {
+    await db
+      .update(requests)
+      .set({
+        quantity: request.quantity - returnQty,
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId));
+  } else {
+    await db
+      .update(requests)
+      .set({
+        status: "returned",
+        returnedAt: new Date(),
+        receivedById: session.user.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(requests.id, requestId));
+  }
 
   // Log action
   await db.insert(auditLogs).values({
@@ -893,7 +911,7 @@ export async function returnItem(
     action: "return_item",
     entityType: "request",
     entityId: requestId,
-    newValues: { notes },
+    newValues: { notes, returnQuantity: returnQty, partial: isPartialReturn },
   });
 
   revalidatePath("/dashboard/requests");
