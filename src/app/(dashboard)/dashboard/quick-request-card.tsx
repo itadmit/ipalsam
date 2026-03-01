@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { users, departments, handoverDepartments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { CopyLinkButton } from "./copy-link-button";
-import { QuickRequestSettings } from "./quick-request-settings";
+import { QuickRequestSettingsModal } from "./quick-request-settings-modal";
 
 interface QuickRequestCardProps {
   userId: string;
@@ -58,10 +58,22 @@ export async function QuickRequestCard({ userId }: QuickRequestCardProps) {
   return (
     <Card className="border-emerald-200 bg-emerald-50/30">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-emerald-800">
-          <ScanBarcode className="w-5 h-5" />
-          השאלה מהירה
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-emerald-800">
+            <ScanBarcode className="w-5 h-5" />
+            השאלה מהירה
+          </CardTitle>
+          {isDeptCommander && department && (
+            <QuickRequestSettingsModal
+              departmentId={department.id}
+              autoApproveRequests={department.autoApproveRequests ?? false}
+              storeDepartmentIds={
+                storeDepartmentIds.length > 0 ? storeDepartmentIds : department.id ? [department.id] : []
+              }
+              departments={departmentsList}
+            />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-slate-600">
@@ -82,17 +94,6 @@ export async function QuickRequestCard({ userId }: QuickRequestCardProps) {
             </Button>
           </Link>
         </div>
-
-        {isDeptCommander && department && (
-          <QuickRequestSettings
-            departmentId={department.id}
-            autoApproveRequests={department.autoApproveRequests ?? false}
-            storeDepartmentIds={
-              storeDepartmentIds.length > 0 ? storeDepartmentIds : department.id ? [department.id] : []
-            }
-            departments={departmentsList}
-          />
-        )}
 
         <div className="pt-3 border-t border-emerald-200">
           <p className="text-sm font-medium text-slate-700 mb-1">ברקוד – הלינק להשאלה מהירה</p>
