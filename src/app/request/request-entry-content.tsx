@@ -4,14 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Phone, ScanBarcode } from "lucide-react";
-import { identifySoldierByPhone, identifySoldierByBarcode } from "@/actions/soldier-request";
+import { Store, ScanBarcode } from "lucide-react";
+import { validateStoreLink } from "@/actions/soldier-request";
 
-interface RequestEntryContentProps {
-  fromPhone?: string;
-}
-
-export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
+export function RequestEntryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [phone, setPhone] = useState("");
@@ -24,23 +20,16 @@ export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
     if (err) setError(decodeURIComponent(err));
   }, [searchParams]);
 
-  const appendFrom = (url: string) => {
-    if (fromPhone) {
-      return `${url}${url.includes("?") ? "&" : "?"}from=${encodeURIComponent(fromPhone)}`;
-    }
-    return url;
-  };
-
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const handleStoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const result = await identifySoldierByPhone(phone);
+      const result = await validateStoreLink(phone);
       if ("error" in result) {
         setError(result.error || "שגיאה");
       } else {
-        router.push(appendFrom(`/request/new?token=${encodeURIComponent(result.token)}`));
+        router.push(`/request/${result.phoneDigits}`);
       }
     } catch {
       setError("אירעה שגיאה");
@@ -54,11 +43,11 @@ export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
     setError("");
     setLoading(true);
     try {
-      const result = await identifySoldierByBarcode(barcode);
+      const result = await validateStoreLink(barcode);
       if ("error" in result) {
         setError(result.error || "שגיאה");
       } else {
-        router.push(appendFrom(`/request/new?token=${encodeURIComponent(result.token)}`));
+        router.push(`/request/${result.phoneDigits}`);
       }
     } catch {
       setError("אירעה שגיאה");
@@ -73,7 +62,7 @@ export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900">תחבורת מהיר</h1>
           <p className="text-slate-500 mt-1">
-            {fromPhone ? "הזן טלפון או סרוק ברקוד – ההשאלה תהיה ממחלקה ספציפית" : "הזן טלפון או סרוק ברקוד"}
+            הזן טלפון של מוסר הציוד או סרוק את לינק החנות
           </p>
         </div>
 
@@ -84,12 +73,12 @@ export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
             </div>
           )}
 
-          <form onSubmit={handlePhoneSubmit} className="space-y-3">
+          <form onSubmit={handleStoreSubmit} className="space-y-3">
             <div className="relative">
-              <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Store className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input
                 type="tel"
-                placeholder="מספר טלפון"
+                placeholder="טלפון מוסר הציוד"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="pr-10 text-lg"
@@ -97,7 +86,7 @@ export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
               />
             </div>
             <Button type="submit" className="w-full" loading={loading}>
-              המשך
+              כניסה לחנות
             </Button>
           </form>
 
@@ -115,7 +104,7 @@ export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
               <ScanBarcode className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input
                 type="text"
-                placeholder="סרוק ברקוד"
+                placeholder="סרוק לינק החנות"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
                 className="pr-10"
@@ -123,7 +112,7 @@ export function RequestEntryContent({ fromPhone }: RequestEntryContentProps) {
               />
             </div>
             <Button type="submit" variant="outline" className="w-full" loading={loading}>
-              זיהוי ברקוד
+              סרוק לינק
             </Button>
           </form>
         </div>

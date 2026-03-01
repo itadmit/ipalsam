@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { RequestEntryContent } from "../request-entry-content";
+import { getPublicStoreData } from "@/actions/soldier-request";
+import { PublicStore } from "./public-store";
 
-export default async function RequestByPhonePage({
+export default async function RequestStorePage({
   params,
 }: {
   params: Promise<{ phone: string }>;
@@ -16,23 +14,19 @@ export default async function RequestByPhonePage({
     redirect("/request");
   }
 
-  const allUsers = await db.query.users.findMany({
-    where: eq(users.role, "dept_commander"),
-    columns: { id: true, phone: true, departmentId: true },
-  });
-
-  const handoverUser = allUsers.find((u) => {
-    const p = (u.phone || "").replace(/\D/g, "").slice(-10);
-    return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
-  });
-
-  if (!handoverUser || !handoverUser.departmentId) {
-    redirect("/request");
+  const data = await getPublicStoreData(phoneDigits);
+  if ("error" in data) {
+    redirect(`/request?error=${encodeURIComponent(data.error || "שגיאה")}`);
   }
 
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center">טוען...</div>}>
-      <RequestEntryContent fromPhone={phoneDigits} />
+      <PublicStore
+        storeName={data.storeName}
+        department={data.department}
+        items={data.items}
+        handoverPhone={phoneDigits}
+      />
     </Suspense>
   );
 }

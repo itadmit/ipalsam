@@ -13,8 +13,79 @@ import {
   departments,
 } from "@/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { hash } from "bcryptjs";
 import { createRequestToken, verifyRequestToken } from "@/lib/request-token";
 import { revalidatePath } from "next/cache";
+
+export async function validateStoreLink(input: string) {
+  const phoneDigits = input.replace(/\D/g, "").slice(-10);
+  if (phoneDigits.length < 9) return { error: "לינק לא תקין" };
+
+  const allDeptCommanders = await db.query.users.findMany({
+    where: eq(users.role, "dept_commander"),
+    columns: { phone: true, departmentId: true },
+  });
+  const handoverUser = allDeptCommanders.find((u) => {
+    const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+    return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
+  });
+  if (!handoverUser?.departmentId) return { error: "חנות לא נמצאה" };
+  return { phoneDigits };
+}
+
+export async function getPublicStoreData(handoverPhone: string) {
+  const phoneDigits = handoverPhone.replace(/\D/g, "").slice(-10);
+  if (phoneDigits.length < 9) return { error: "לינק לא תקין" };
+
+  const allDeptCommanders = await db.query.users.findMany({
+    where: eq(users.role, "dept_commander"),
+    columns: { id: true, phone: true, firstName: true, lastName: true, departmentId: true },
+  });
+  const handoverUser = allDeptCommanders.find((u) => {
+    const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+    return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
+  });
+  if (!handoverUser?.departmentId) return { error: "חנות לא נמצאה" };
+
+  const dept = await db.query.departments.findFirst({
+    where: eq(departments.id, handoverUser.departmentId),
+    columns: { id: true, name: true },
+  });
+  if (!dept) return { error: "מחלקה לא נמצאה" };
+
+  const items = await db.query.itemTypes.findMany({
+    where: and(
+      eq(itemTypes.departmentId, handoverUser.departmentId),
+      eq(itemTypes.isActive, true)
+    ),
+    columns: { id: true, name: true, departmentId: true, quantityAvailable: true, type: true },
+  });
+
+  const itemsWithStock: { id: string; name: string; departmentId: string; inStock: boolean }[] = [];
+  for (const item of items) {
+    const inStock =
+      item.type === "quantity"
+        ? (item.quantityAvailable || 0) > 0
+        : (await db.query.itemUnits.findFirst({
+            where: and(
+              eq(itemUnits.itemTypeId, item.id),
+              eq(itemUnits.status, "available")
+            ),
+          })) !== undefined;
+    itemsWithStock.push({
+      id: item.id,
+      name: item.name,
+      departmentId: item.departmentId,
+      inStock,
+    });
+  }
+
+  return {
+    storeName: `${handoverUser.firstName || ""} ${handoverUser.lastName || ""}`.trim() || "החנות",
+    department: { id: dept.id, name: dept.name },
+    items: itemsWithStock,
+  };
+}
 
 export async function identifySoldierByPhone(phone: string) {
   const normalized = phone.replace(/\D/g, "").slice(-10);
@@ -38,6 +109,68 @@ export async function identifySoldierByPhone(phone: string) {
 
   const token = createRequestToken(soldier.id);
   return { token, soldierName: `${soldier.firstName} ${soldier.lastName}` };
+}
+
+export async function identifyOrCreateSoldier(
+  phone: string,
+  options?: { firstName?: string; lastName?: string; departmentId?: string }
+) {
+  const normalized = phone.replace(/\D/g, "").slice(-10);
+  if (normalized.length < 9) {
+    return { error: "מספר טלפון לא תקין" };
+  }
+
+  const allSoldiers = await db.query.users.findMany({
+    where: eq(users.role, "soldier"),
+    columns: { id: true, phone: true, firstName: true, lastName: true, isActive: true },
+  });
+
+  const soldier = allSoldiers.find((u) => {
+    const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+    return p === normalized || p.endsWith(normalized) || normalized.endsWith(p);
+  });
+
+  if (soldier?.isActive) {
+    const token = createRequestToken(soldier.id);
+    return { token, soldierName: `${soldier.firstName} ${soldier.lastName}` };
+  }
+
+  if (soldier && !soldier.isActive) {
+    return { error: "המשתמש לא פעיל" };
+  }
+
+  if (options?.firstName && options?.lastName) {
+    const fullPhone = normalized.length === 9 ? `0${normalized}` : normalized;
+    const existingByPhone = await db.query.users.findFirst({
+      where: eq(users.phone, fullPhone),
+    });
+    if (existingByPhone) {
+      return { error: "מספר טלפון זה כבר רשום במערכת" };
+    }
+    const hashedPassword = await hash(fullPhone, 12);
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        phone: fullPhone,
+        password: hashedPassword,
+        firstName: options.firstName.trim(),
+        lastName: options.lastName.trim(),
+        role: "soldier",
+        departmentId: options.departmentId || null,
+        mustChangePassword: false,
+      })
+      .returning();
+    if (options.departmentId) {
+      await db.insert(soldierDepartments).values({
+        userId: newUser.id,
+        departmentId: options.departmentId,
+      });
+    }
+    const token = createRequestToken(newUser.id);
+    return { token, soldierName: `${options.firstName} ${options.lastName}` };
+  }
+
+  return { needCreate: true as const };
 }
 
 export async function identifySoldierByBarcode(barcode: string) {
@@ -223,7 +356,8 @@ export async function createRequestBySoldier(
     recipientPhone?: string;
     recipientSignature?: string;
     notes?: string;
-  }
+  },
+  fromPhone?: string
 ) {
   const verified = verifyRequestToken(token);
   if (!verified) return { error: "פג תוקף. אנא הזן טלפון או סרוק ברקוד מחדש" };
@@ -233,7 +367,22 @@ export async function createRequestBySoldier(
   });
   if (!requester || !requester.isActive) return { error: "חייל לא נמצא" };
 
-  const allowedDeptIds = await getSoldierAllowedDepartmentIds(requester.id);
+  let allowedDeptIds: string[];
+  if (fromPhone) {
+    const phoneDigits = fromPhone.replace(/\D/g, "").slice(-10);
+    const allDeptCommanders = await db.query.users.findMany({
+      where: eq(users.role, "dept_commander"),
+      columns: { phone: true, departmentId: true },
+    });
+    const handoverUser = allDeptCommanders.find((u) => {
+      const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+      return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
+    });
+    if (!handoverUser?.departmentId) return { error: "לינק לא תקין" };
+    allowedDeptIds = [handoverUser.departmentId];
+  } else {
+    allowedDeptIds = await getSoldierAllowedDepartmentIds(requester.id);
+  }
   if (allowedDeptIds.length === 0) return { error: "אין הרשאה" };
 
   if (items.length === 0) return { error: "יש להוסיף לפחות פריט אחד" };
