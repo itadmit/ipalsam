@@ -190,7 +190,7 @@ export function NewRequestForm({
     }
 
     for (const row of validRows) {
-      const avail = getAvailableForItem(row.itemTypeId);
+      const avail = getAvailableForItem(row.itemTypeId, row.id);
       if (row.quantity > avail) {
         const item = Object.values(itemsByDepartment)
           .flat()
