@@ -99,7 +99,7 @@ export async function getPublicStoreData(handoverPhone: string) {
 
 export async function searchSoldiersByPhone(partialPhone: string) {
   const digits = partialPhone.replace(/\D/g, "");
-  if (digits.length < 3) return { matches: [] };
+  if (digits.length < 2) return { matches: [] };
 
   const allSoldiers = await db.query.users.findMany({
     where: and(eq(users.role, "soldier"), eq(users.isActive, true)),

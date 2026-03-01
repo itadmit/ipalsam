@@ -73,7 +73,7 @@ export function CheckoutFlow({
   }, [handoverPhone, router]);
 
   const searchPhone = useCallback(async (value: string) => {
-    if (value.replace(/\D/g, "").length < 3) {
+    if (value.replace(/\D/g, "").length < 2) {
       setPhoneMatches([]);
       return;
     }
@@ -88,7 +88,7 @@ export function CheckoutFlow({
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => searchPhone(phone), 300);
+    const t = setTimeout(() => searchPhone(phone), 150);
     return () => clearTimeout(t);
   }, [phone, searchPhone]);
 
@@ -278,7 +278,7 @@ export function CheckoutFlow({
                       setToken(null);
                     }}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                    onFocus={() => phone.length >= 3 && setShowDropdown(true)}
+                    onFocus={() => phone.replace(/\D/g, "").length >= 2 && setShowDropdown(true)}
                     placeholder="הזן טלפון"
                     dir="ltr"
                     required
