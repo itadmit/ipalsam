@@ -101,7 +101,11 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
           label="קטגוריה"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          options={[
+            { value: "", label: "ללא קטגוריה" },
+            ...categories.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="בחר קטגוריה"
         />
 
         <div>

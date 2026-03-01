@@ -106,6 +106,7 @@ export const departments = pgTable("departments", {
   allowImmediate: boolean("allow_immediate").default(true).notNull(),
   allowScheduled: boolean("allow_scheduled").default(true).notNull(),
   autoApproveRequests: boolean("auto_approve_requests").default(false).notNull(),
+  visibleInHqDashboard: boolean("visible_in_hq_dashboard").default(true).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

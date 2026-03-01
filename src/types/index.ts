@@ -103,6 +103,7 @@ export type CreateDepartmentFormData = {
   allowImmediate: boolean;
   allowScheduled: boolean;
   autoApproveRequests?: boolean;
+  visibleInHqDashboard?: boolean;
 };
 
 export type CreateItemTypeFormData = {

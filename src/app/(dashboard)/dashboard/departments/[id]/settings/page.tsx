@@ -48,6 +48,7 @@ export default async function DepartmentSettingsPage({
     allowImmediate: department.allowImmediate,
     allowScheduled: department.allowScheduled,
     autoApproveRequests: department.autoApproveRequests ?? false,
+    visibleInHqDashboard: (department as { visibleInHqDashboard?: boolean }).visibleInHqDashboard ?? true,
   };
 
   return (
@@ -67,7 +68,10 @@ export default async function DepartmentSettingsPage({
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">
-          <DepartmentSettingsForm department={departmentData} />
+          <DepartmentSettingsForm
+            department={departmentData}
+            isSuperAdmin={session.user.role === "super_admin"}
+          />
         </CardContent>
       </Card>
     </div>

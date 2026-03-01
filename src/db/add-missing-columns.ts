@@ -38,7 +38,20 @@ async function addMissingColumns() {
     }
   }
 
-  // 3. soldier_departments
+  // 3. visible_in_hq_dashboard ב-departments
+  try {
+    await sql`ALTER TABLE departments ADD COLUMN visible_in_hq_dashboard boolean DEFAULT true NOT NULL`;
+    console.log("✅ departments.visible_in_hq_dashboard");
+  } catch (e: unknown) {
+    const err = e as { code?: string };
+    if (err?.code === "42701") {
+      console.log("✓ departments.visible_in_hq_dashboard כבר קיים");
+    } else {
+      throw e;
+    }
+  }
+
+  // 4. soldier_departments
   await sql`
     CREATE TABLE IF NOT EXISTS soldier_departments (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

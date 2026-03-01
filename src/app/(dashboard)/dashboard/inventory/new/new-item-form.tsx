@@ -117,9 +117,12 @@ export function NewItemForm({
           label="קטגוריה (אופציונלי)"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          options={availableCategories.map((c) => ({ value: c.id, label: c.name }))}
+          options={[
+            { value: "", label: "ללא קטגוריה" },
+            ...availableCategories.map((c) => ({ value: c.id, label: c.name })),
+          ]}
           placeholder="בחר קטגוריה"
-          disabled={!departmentId || availableCategories.length === 0}
+          disabled={!departmentId}
         />
 
         <Input

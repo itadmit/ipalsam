@@ -16,10 +16,12 @@ interface DepartmentSettingsFormProps {
     allowImmediate: boolean;
     allowScheduled: boolean;
     autoApproveRequests: boolean;
+    visibleInHqDashboard: boolean;
   };
+  isSuperAdmin?: boolean;
 }
 
-export function DepartmentSettingsForm({ department }: DepartmentSettingsFormProps) {
+export function DepartmentSettingsForm({ department, isSuperAdmin }: DepartmentSettingsFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +33,7 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
   const [allowImmediate, setAllowImmediate] = useState(department.allowImmediate);
   const [allowScheduled, setAllowScheduled] = useState(department.allowScheduled);
   const [autoApproveRequests, setAutoApproveRequests] = useState(department.autoApproveRequests);
+  const [visibleInHqDashboard, setVisibleInHqDashboard] = useState(department.visibleInHqDashboard);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +49,7 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
         allowImmediate,
         allowScheduled,
         autoApproveRequests,
+        ...(isSuperAdmin && { visibleInHqDashboard }),
       });
 
       if (result.error) {
@@ -151,6 +155,20 @@ export function DepartmentSettingsForm({ department }: DepartmentSettingsFormPro
               אשר אוטומטית בקשות מהחיילים (השאלה מהירה)
             </label>
           </div>
+          {isSuperAdmin && (
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="visibleInHqDashboard"
+                checked={visibleInHqDashboard}
+                onChange={(e) => setVisibleInHqDashboard(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <label htmlFor="visibleInHqDashboard" className="text-sm text-slate-700">
+                הצג באיזור הברוד של מפקד המפקדה (דשבורד HQ)
+              </label>
+            </div>
+          )}
         </div>
       </div>
 

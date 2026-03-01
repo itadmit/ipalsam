@@ -84,6 +84,8 @@ export async function updateDepartment(
     updateData.allowScheduled = data.allowScheduled;
   if (data.autoApproveRequests !== undefined)
     updateData.autoApproveRequests = data.autoApproveRequests;
+  if (data.visibleInHqDashboard !== undefined && session.user.role === "super_admin")
+    updateData.visibleInHqDashboard = data.visibleInHqDashboard;
 
   await db
     .update(departments)

@@ -18,7 +18,7 @@ import { QuickRequestCard } from "./quick-request-card";
 import type { SessionUser } from "@/types";
 import { db } from "@/db";
 import { departments, itemTypes, requests, users } from "@/db/schema";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, and } from "drizzle-orm";
 import { getStatusColor, getStatusLabel } from "@/lib/utils";
 
 interface HQDashboardProps {
@@ -26,7 +26,10 @@ interface HQDashboardProps {
 }
 
 async function DashboardStats() {
-  const [deptCount] = await db.select({ count: count() }).from(departments);
+  const [deptCount] = await db
+    .select({ count: count() })
+    .from(departments)
+    .where(and(eq(departments.isActive, true), eq(departments.visibleInHqDashboard, true)));
   const [itemCount] = await db.select({ count: count() }).from(itemTypes);
   const [pendingCount] = await db
     .select({ count: count() })
@@ -76,7 +79,10 @@ async function DashboardStats() {
 
 async function DepartmentOverview() {
   const depts = await db.query.departments.findMany({
-    where: eq(departments.isActive, true),
+    where: and(
+      eq(departments.isActive, true),
+      eq(departments.visibleInHqDashboard, true)
+    ),
     with: {
       itemTypes: true,
     },
