@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { headers } from "next/headers";
+import QRCode from "qrcode";
 import { auth, canAccessSuperAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -63,6 +64,9 @@ export default async function EditUserPage({
   const personalLink = phoneDigits
     ? `${baseUrl}/request/${phoneDigits}`
     : `${baseUrl}/request`;
+  const qrDataUrl = personalLink
+    ? await QRCode.toDataURL(personalLink, { width: 160, margin: 1 })
+    : null;
 
   const showQuickRequest =
     (user.role === "dept_commander" && user.departmentId) || user.role === "soldier";
@@ -169,6 +173,7 @@ export default async function EditUserPage({
           {showQuickRequest && (
             <QuickRequestCardForUser
               personalLink={personalLink}
+              qrDataUrl={qrDataUrl}
               role={user.role === "dept_commander" ? "dept_commander" : "soldier"}
             />
           )}

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ScanBarcode } from "lucide-react";
@@ -44,6 +45,7 @@ export async function QuickRequestCard({ userId }: QuickRequestCardProps) {
     : [];
 
   const storeDepartmentIds = handoverDepts.map((d) => d.departmentId);
+  const qrDataUrl = requestUrl ? await QRCode.toDataURL(requestUrl, { width: 160, margin: 1 }) : null;
   const departmentsList =
     isDeptCommander && department?.baseId
       ? await db.query.departments.findMany({
@@ -97,11 +99,18 @@ export async function QuickRequestCard({ userId }: QuickRequestCardProps) {
           <p className="text-xs text-slate-500 mb-2">
             הדפס את הלינק כ-QR או סרוק כדי להגיע להשאלה מהירה
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <code className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm truncate">
-              {requestUrl}
-            </code>
-            <CopyLinkButton url={requestUrl} label="העתק" />
+          <div className="flex flex-wrap items-center gap-4">
+            {qrDataUrl && (
+              <div className="flex-shrink-0 p-2 bg-white rounded-lg border border-slate-200">
+                <img src={qrDataUrl} alt="QR להשאלה מהירה" width={160} height={160} />
+              </div>
+            )}
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
+              <code className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm truncate">
+                {requestUrl}
+              </code>
+              <CopyLinkButton url={requestUrl} label="העתק" />
+            </div>
           </div>
         </div>
       </CardContent>
