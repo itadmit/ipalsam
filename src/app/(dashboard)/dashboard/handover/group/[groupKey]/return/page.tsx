@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { formatDateTime, formatDate } from "@/lib/utils";
 import { GroupReturnButton } from "./group-return-button";
+import { SingleItemReturnButton } from "./single-item-return-button";
 import { db } from "@/db";
 import { requests } from "@/db/schema";
 import { and, eq, or } from "drizzle-orm";
@@ -36,7 +37,11 @@ export default async function GroupReturnPage({
   let groupRequests = await db.query.requests.findMany({
     where: and(
       eq(requests.requestGroupId, groupKey),
-      or(eq(requests.status, "approved"), eq(requests.status, "handed_over"))
+      or(
+        eq(requests.status, "approved"),
+        eq(requests.status, "handed_over"),
+        eq(requests.status, "returned")
+      )
     ),
     with: {
       requester: true,
@@ -49,7 +54,11 @@ export default async function GroupReturnPage({
     const single = await db.query.requests.findFirst({
       where: and(
         eq(requests.id, groupKey),
-        or(eq(requests.status, "approved"), eq(requests.status, "handed_over"))
+        or(
+          eq(requests.status, "approved"),
+          eq(requests.status, "handed_over"),
+          eq(requests.status, "returned")
+        )
       ),
       with: {
         requester: true,
@@ -122,7 +131,7 @@ export default async function GroupReturnPage({
                 {groupRequests.map((req) => (
                   <div
                     key={req.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200"
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200"
                   >
                     <div>
                       <p className="font-medium">{req.itemType?.name}</p>
@@ -144,13 +153,23 @@ export default async function GroupReturnPage({
                         )}
                       </p>
                     </div>
+                    {req.status === "handed_over" ? (
+                      <SingleItemReturnButton
+                        requestId={req.id}
+                        itemName={req.itemType?.name || ""}
+                      />
+                    ) : req.status === "returned" ? (
+                      <span className="text-xs text-emerald-600 font-medium shrink-0">הוחזר</span>
+                    ) : null}
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          <GroupReturnButton groupKey={groupKey} />
+          {groupRequests.some((r) => r.status === "handed_over") && (
+            <GroupReturnButton groupKey={groupKey} />
+          )}
         </div>
 
         <div className="space-y-6">

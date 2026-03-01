@@ -897,7 +897,9 @@ export async function returnItem(
   });
 
   revalidatePath("/dashboard/requests");
+  revalidatePath("/dashboard/loans");
   revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/handover");
   revalidatePath("/dashboard");
 
   return { success: true };
