@@ -74,10 +74,10 @@ export function QuickRequestSettingsModal({
       <Button
         variant="outline"
         size="sm"
-        className="gap-1.5"
+        className="gap-1 h-8"
         onClick={handleOpen}
       >
-        <Settings className="w-4 h-4" />
+        <Settings className="w-3.5 h-3.5" />
         הגדרות
       </Button>
 
