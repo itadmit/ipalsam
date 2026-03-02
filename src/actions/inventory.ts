@@ -317,6 +317,12 @@ export async function updateItemType(
   if (data.notes !== undefined) updateData.notes = data.notes || null;
   if (data.categoryId !== undefined)
     updateData.categoryId = data.categoryId || null;
+  if (data.departmentId !== undefined) {
+    if (!canManageDepartment(userRole, userDeptId, data.departmentId)) {
+      return { error: "אין הרשאה למחלקה זו" };
+    }
+    updateData.departmentId = data.departmentId;
+  }
   if (data.minimumAlert !== undefined) updateData.minimumAlert = data.minimumAlert;
   if (data.requiresDoubleApproval !== undefined)
     updateData.requiresDoubleApproval = data.requiresDoubleApproval;

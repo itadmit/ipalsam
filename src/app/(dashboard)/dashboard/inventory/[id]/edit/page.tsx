@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { EditItemForm } from "./edit-item-form";
 import { db } from "@/db";
-import { itemTypes, categories } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { itemTypes, categories, departments } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export default async function EditInventoryItemPage({
   params,
@@ -29,17 +29,40 @@ export default async function EditInventoryItemPage({
     notFound();
   }
 
-  const categoriesList = await db.query.categories.findMany({
-    where: eq(categories.departmentId, item.departmentId),
-    columns: { id: true, name: true },
-  });
+  const canManageAll =
+    session.user.role === "super_admin" || session.user.role === "hq_commander";
+  const categoriesList = canManageAll
+    ? await db.query.categories.findMany({
+        where: eq(categories.isActive, true),
+        columns: { id: true, name: true, departmentId: true },
+      })
+    : await db.query.categories.findMany({
+        where: and(
+          eq(categories.departmentId, item.departmentId),
+          eq(categories.isActive, true)
+        ),
+        columns: { id: true, name: true, departmentId: true },
+      });
+
+  const categoriesWithDept = await Promise.all(
+    categoriesList.map(async (c) => {
+      const dept = await db.query.departments.findFirst({
+        where: eq(departments.id, c.departmentId),
+        columns: { name: true },
+      });
+      return {
+        ...c,
+        departmentName: dept?.name || "",
+      };
+    })
+  );
 
   const itemData = {
     id: item.id,
     name: item.name,
     catalogNumber: item.catalogNumber || "",
     categoryId: item.categoryId || "",
-    departmentId: item.departmentId,
+    departmentId: item.departmentId || "",
     type: item.type as "serial" | "quantity",
     description: item.description || "",
     notes: item.notes || "",
@@ -68,7 +91,7 @@ export default async function EditInventoryItemPage({
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">
-          <EditItemForm item={itemData} categories={categoriesList} />
+          <EditItemForm item={itemData} categories={categoriesWithDept} />
         </CardContent>
       </Card>
     </div>

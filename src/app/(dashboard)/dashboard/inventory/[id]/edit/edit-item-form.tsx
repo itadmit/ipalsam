@@ -13,6 +13,7 @@ interface EditItemFormProps {
     name: string;
     catalogNumber: string;
     categoryId: string;
+    departmentId: string;
     description: string;
     notes: string;
     minimumAlert: number;
@@ -23,7 +24,7 @@ interface EditItemFormProps {
     quantityAvailable?: number;
     quantityInUse?: number;
   };
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; departmentId: string; departmentName: string }[];
 }
 
 export function EditItemForm({ item, categories }: EditItemFormProps) {
@@ -34,6 +35,7 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
   const [name, setName] = useState(item.name);
   const [catalogNumber, setCatalogNumber] = useState(item.catalogNumber);
   const [categoryId, setCategoryId] = useState(item.categoryId);
+  const [departmentId, setDepartmentId] = useState(item.departmentId);
   const [description, setDescription] = useState(item.description);
   const [notes, setNotes] = useState(item.notes);
   const [minimumAlert, setMinimumAlert] = useState(item.minimumAlert);
@@ -51,6 +53,7 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
         name,
         catalogNumber,
         categoryId,
+        departmentId,
         description,
         notes,
         minimumAlert,
@@ -100,10 +103,18 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
           id="category"
           label="קטגוריה"
           value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCategoryId(val);
+            const cat = val ? categories.find((c) => c.id === val) : null;
+            if (cat) setDepartmentId(cat.departmentId);
+          }}
           options={[
             { value: "", label: "ללא קטגוריה" },
-            ...categories.map((c) => ({ value: c.id, label: c.name })),
+            ...categories.map((c) => ({
+              value: c.id,
+              label: c.departmentName ? `${c.name} (${c.departmentName})` : c.name,
+            })),
           ]}
           placeholder="בחר קטגוריה"
         />
