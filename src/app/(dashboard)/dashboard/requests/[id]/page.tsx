@@ -15,9 +15,11 @@ import {
   FileText,
   CheckCircle,
   XCircle,
+  RotateCcw,
 } from "lucide-react";
 import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
 import { RequestStatusChange } from "./request-status-change";
+import { SingleItemReturnButton } from "@/app/(dashboard)/dashboard/handover/group/[groupKey]/return/single-item-return-button";
 import { db } from "@/db";
 import { requests } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -55,10 +57,11 @@ export default async function RequestDetailPage({
         with: {
           itemType: true,
           department: true,
+          itemUnit: true,
         },
         orderBy: (requests, { asc }) => [asc(requests.createdAt)],
       })
-    : [request];
+    : [{ ...request, itemUnit: null }];
 
   const canApprove =
     session.user.role === "super_admin" ||
@@ -75,12 +78,22 @@ export default async function RequestDetailPage({
             : `${request.itemType?.name || "-"} • ${request.department?.name || "-"}`
         }
         actions={
-          <Link href="/dashboard/requests">
-            <Button variant="outline">
-              <ArrowRight className="w-4 h-4" />
-              חזרה לרשימה
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {groupRequests.some((r) => r.status === "handed_over") && canApprove && (
+              <Link href={`/dashboard/handover/group/${groupKey}/return`}>
+                <Button variant="default" className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                  <RotateCcw className="w-4 h-4" />
+                  קבלת החזרה
+                </Button>
+              </Link>
+            )}
+            <Link href="/dashboard/requests">
+              <Button variant="outline">
+                <ArrowRight className="w-4 h-4" />
+                חזרה לרשימה
+              </Button>
+            </Link>
+          </div>
         }
       />
 
@@ -121,9 +134,9 @@ export default async function RequestDetailPage({
                 {groupRequests.map((req) => (
                   <div
                     key={req.id}
-                    className="p-4 rounded-lg bg-slate-50 border border-slate-200"
+                    className="flex items-center justify-between gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200"
                   >
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 flex-1">
                       <div>
                         <p className="text-sm text-slate-500">שם הפריט</p>
                         <p className="font-medium">{req.itemType?.name || "-"}</p>
@@ -143,6 +156,17 @@ export default async function RequestDetailPage({
                         <p className="font-medium">{req.department?.name || "-"}</p>
                       </div>
                     </div>
+                    {req.status === "handed_over" && canApprove && (
+                      <SingleItemReturnButton
+                        requestId={req.id}
+                        itemName={req.itemType?.name || ""}
+                        quantity={req.quantity}
+                        itemType={req.itemType?.type || "quantity"}
+                      />
+                    )}
+                    {req.status === "returned" && (
+                      <span className="text-xs text-emerald-600 font-medium shrink-0">הוחזר</span>
+                    )}
                   </div>
                 ))}
               </div>

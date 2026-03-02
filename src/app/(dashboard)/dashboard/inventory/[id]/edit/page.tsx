@@ -31,6 +31,21 @@ export default async function EditInventoryItemPage({
 
   const canManageAll =
     session.user.role === "super_admin" || session.user.role === "hq_commander";
+  const departmentsList = canManageAll
+    ? await db.query.departments.findMany({
+        where: eq(departments.isActive, true),
+        columns: { id: true, name: true },
+        orderBy: (departments, { asc }) => [asc(departments.name)],
+      })
+    : item.departmentId
+      ? await db.query.departments.findMany({
+          where: and(
+            eq(departments.id, item.departmentId),
+            eq(departments.isActive, true)
+          ),
+          columns: { id: true, name: true },
+        })
+      : [];
   const categoriesList = canManageAll
     ? await db.query.categories.findMany({
         where: eq(categories.isActive, true),
@@ -91,7 +106,12 @@ export default async function EditInventoryItemPage({
 
       <Card className="max-w-2xl">
         <CardContent className="p-6">
-          <EditItemForm item={itemData} categories={categoriesWithDept} />
+          <EditItemForm
+            item={itemData}
+            categories={categoriesWithDept}
+            departments={departmentsList}
+            canChangeDepartment={canManageAll}
+          />
         </CardContent>
       </Card>
     </div>

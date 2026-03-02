@@ -25,9 +25,11 @@ interface EditItemFormProps {
     quantityInUse?: number;
   };
   categories: { id: string; name: string; departmentId: string; departmentName: string }[];
+  departments: { id: string; name: string }[];
+  canChangeDepartment?: boolean;
 }
 
-export function EditItemForm({ item, categories }: EditItemFormProps) {
+export function EditItemForm({ item, categories, departments, canChangeDepartment = false }: EditItemFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -111,13 +113,31 @@ export function EditItemForm({ item, categories }: EditItemFormProps) {
           }}
           options={[
             { value: "", label: "ללא קטגוריה" },
-            ...categories.map((c) => ({
-              value: c.id,
-              label: c.departmentName ? `${c.name} (${c.departmentName})` : c.name,
-            })),
+            ...categories
+              .filter((c) => !departmentId || c.departmentId === departmentId)
+              .map((c) => ({
+                value: c.id,
+                label: c.departmentName ? `${c.name} (${c.departmentName})` : c.name,
+              })),
           ]}
           placeholder="בחר קטגוריה"
         />
+
+        {departments.length > 0 && (
+          <Select
+            id="department"
+            label="מחלקה"
+            value={departmentId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setDepartmentId(val);
+              const cat = categoryId ? categories.find((c) => c.id === categoryId) : null;
+              if (cat && cat.departmentId !== val) setCategoryId("");
+            }}
+            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+            disabled={!canChangeDepartment}
+          />
+        )}
 
         <div>
           <label
