@@ -17,74 +17,36 @@ import {
 import { Download, Filter } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import type { SessionUser } from "@/types";
+import { db } from "@/db";
+import { auditLogs } from "@/db/schema";
+import { desc } from "drizzle-orm";
 
 async function getAuditLogs() {
-  // TODO: Fetch from DB
-  return [
-    {
-      id: "1",
-      user: "יוגב אביטן",
-      action: "create_user",
-      entityType: "user",
-      details: 'משתמש חדש "דני לוי" נוצר',
-      createdAt: new Date("2026-01-22T09:30:00"),
-      ip: "192.168.1.1",
+  const logs = await db.query.auditLogs.findMany({
+    orderBy: [desc(auditLogs.createdAt)],
+    limit: 100,
+    with: {
+      user: { columns: { firstName: true, lastName: true } },
     },
-    {
-      id: "2",
-      user: "ניסם חדד",
-      action: "approve_request",
-      entityType: "request",
-      details: "השאלה #1234 אושרה",
-      createdAt: new Date("2026-01-22T09:15:00"),
-      ip: "192.168.1.2",
-    },
-    {
-      id: "3",
-      user: "ולרי כהן",
-      action: "handover_item",
-      entityType: "request",
-      details: "מכשיר קשר #K-2341 נמסר ליוסי כהן",
-      createdAt: new Date("2026-01-22T08:45:00"),
-      ip: "192.168.1.3",
-    },
-    {
-      id: "4",
-      user: "מערכת",
-      action: "alert",
-      entityType: "system",
-      details: "התראה: מלאי נמוך - סוללות AA",
-      createdAt: new Date("2026-01-22T08:00:00"),
-      ip: null,
-    },
-    {
-      id: "5",
-      user: "דני לוי",
-      action: "return_item",
-      entityType: "request",
-      details: "רובה #W-1000-015 הוחזר",
-      createdAt: new Date("2026-01-21T17:30:00"),
-      ip: "192.168.1.4",
-    },
-    {
-      id: "6",
-      user: "יוגב אביטן",
-      action: "update_department",
-      entityType: "department",
-      details: 'שעות פעילות מחלקת "קשר" עודכנו',
-      createdAt: new Date("2026-01-21T14:00:00"),
-      ip: "192.168.1.1",
-    },
-    {
-      id: "7",
-      user: "מיכל אברהם",
-      action: "intake_quantity",
-      entityType: "item_type",
-      details: "קליטת 50 יח' סוללות AA",
-      createdAt: new Date("2026-01-21T10:00:00"),
-      ip: "192.168.1.5",
-    },
-  ];
+  });
+
+  return logs.map((log) => {
+    const nv = log.newValues as Record<string, unknown> | null;
+    let details = log.action;
+    if (log.entityType === "request" && log.entityId)
+      details = `השאלה #${String(log.entityId).slice(0, 8)}`;
+    else if (log.entityType === "user" && nv?.firstName)
+      details = `משתמש ${nv.firstName} ${nv.lastName || ""}`;
+    return {
+      id: log.id,
+      user: log.user ? `${log.user.firstName} ${log.user.lastName}` : "מערכת",
+      action: log.action,
+      entityType: log.entityType,
+      details,
+      createdAt: log.createdAt,
+      ip: log.ipAddress,
+    };
+  });
 }
 
 function getActionLabel(action: string): string {

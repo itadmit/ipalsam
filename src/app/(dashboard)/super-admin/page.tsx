@@ -21,74 +21,113 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import type { SessionUser } from "@/types";
+import { db } from "@/db";
+import { departments, users, itemTypes, requests, auditLogs } from "@/db/schema";
+import { eq, count, desc, or } from "drizzle-orm";
 
 async function AdminStats() {
-  // TODO: Fetch actual data
-  const stats = {
-    totalBases: 1,
-    totalDepartments: 6,
-    totalUsers: 156,
-    totalItems: 1250,
-    activeLoans: 245,
-    pendingRequests: 12,
-  };
+  const [deptCount] = await db
+    .select({ count: count() })
+    .from(departments)
+    .where(eq(departments.isActive, true));
+  const [userCount] = await db
+    .select({ count: count() })
+    .from(users)
+    .where(eq(users.isActive, true));
+  const [itemCount] = await db.select({ count: count() }).from(itemTypes);
+  const [activeLoansCount] = await db
+    .select({ count: count() })
+    .from(requests)
+    .where(eq(requests.status, "handed_over"));
+  const [pendingCount] = await db
+    .select({ count: count() })
+    .from(requests)
+    .where(or(eq(requests.status, "submitted"), eq(requests.status, "approved")));
+  const pendingRequests = pendingCount?.count || 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <StatCard
         title="מחלקות"
-        value={stats.totalDepartments}
+        value={deptCount?.count || 0}
         icon={Building2}
-        description="בבסיס הפעיל"
+        description="פעילות"
       />
       <StatCard
         title="משתמשים"
-        value={stats.totalUsers}
+        value={userCount?.count || 0}
         icon={Users}
         iconClassName="bg-blue-50"
       />
       <StatCard
         title="פריטי ציוד"
-        value={stats.totalItems.toLocaleString()}
+        value={(itemCount?.count || 0).toLocaleString()}
         icon={Package}
         iconClassName="bg-purple-50"
+      />
+      <StatCard
+        title="השאלות פעילות"
+        value={activeLoansCount?.count || 0}
+        icon={FileText}
+        description="נמסרו"
+      />
+      <StatCard
+        title="ממתינות לאישור"
+        value={pendingRequests}
+        icon={Clock}
+        iconClassName="bg-amber-50"
       />
     </div>
   );
 }
 
+const ACTION_LABELS: Record<string, string> = {
+  create_request: "יצירת השאלה",
+  approve_request: "אישור השאלה",
+  reject_request: "דחיית השאלה",
+  handover_item: "מסירת ציוד",
+  return_item: "החזרת ציוד",
+  create_user: "יצירת משתמש",
+  update_user: "עדכון משתמש",
+  create_department: "יצירת מחלקה",
+  update_department: "עדכון מחלקה",
+  create_item_type: "יצירת סוג ציוד",
+  update_item_type: "עדכון סוג ציוד",
+  add_serial_unit: "הוספת יחידה",
+  intake_quantity: "קליטת כמות",
+};
+
 async function RecentAuditLogs() {
-  // TODO: Fetch from database
-  const logs = [
-    {
-      id: "1",
-      user: "יוגב אביטן",
-      action: "יצירת משתמש",
-      details: 'משתמש חדש "דני לוי" נוצר',
-      time: "לפני 5 דקות",
+  const logs = await db.query.auditLogs.findMany({
+    orderBy: [desc(auditLogs.createdAt)],
+    limit: 6,
+    with: {
+      user: {
+        columns: { firstName: true, lastName: true },
+      },
     },
-    {
-      id: "2",
-      user: "ניסם חדד",
-      action: "אישור השאלה",
-      details: "השאלה #1234 אושרה",
-      time: "לפני 15 דקות",
-    },
-    {
-      id: "3",
-      user: "ולרי כהן",
-      action: "מסירת ציוד",
-      details: "מכשיר קשר #K-2341 נמסר",
-      time: "לפני 30 דקות",
-    },
-    {
-      id: "4",
-      user: "מערכת",
-      action: "התראה",
-      details: "ציוד באיחור זוהה",
-      time: "לפני שעה",
-    },
-  ];
+  });
+
+  function formatTimeAgo(date: Date): string {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 60) return `לפני ${mins} דקות`;
+    if (hours < 24) return `לפני ${hours} שעות`;
+    return `לפני ${days} ימים`;
+  }
+
+  function getDetails(log: (typeof logs)[0]): string {
+    const nv = log.newValues as Record<string, unknown> | null;
+    if (!nv) return log.action;
+    if (log.entityType === "request" && log.entityId)
+      return `השאלה #${String(log.entityId).slice(0, 8)}`;
+    if (log.entityType === "user" && nv.firstName)
+      return `משתמש ${nv.firstName} ${nv.lastName || ""}`;
+    return log.action;
+  }
 
   return (
     <Card>
@@ -106,24 +145,36 @@ async function RecentAuditLogs() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {logs.map((log) => (
-            <div
-              key={log.id}
-              className="flex items-start gap-3 p-3 rounded-lg bg-slate-50"
-            >
-              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                <Clock className="w-4 h-4 text-slate-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-slate-900">{log.user}</span>
-                  <Badge variant="secondary">{log.action}</Badge>
+          {logs.length === 0 ? (
+            <p className="text-sm text-slate-500 py-4">אין פעילות אחרונה</p>
+          ) : (
+            logs.map((log) => (
+              <div
+                key={log.id}
+                className="flex items-start gap-3 p-3 rounded-lg bg-slate-50"
+              >
+                <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4 text-slate-500" />
                 </div>
-                <p className="text-sm text-slate-600">{log.details}</p>
-                <p className="text-xs text-slate-400 mt-1">{log.time}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-slate-900">
+                      {log.user
+                        ? `${log.user.firstName} ${log.user.lastName}`
+                        : "מערכת"}
+                    </span>
+                    <Badge variant="secondary">
+                      {ACTION_LABELS[log.action] || log.action}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-600">{getDetails(log)}</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {formatTimeAgo(log.createdAt)}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </CardContent>
     </Card>
@@ -210,21 +261,48 @@ function QuickActions({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 }
 
 async function SystemAlerts() {
-  // TODO: Fetch actual alerts
-  const alerts = [
-    {
-      id: "1",
+  const lowStockItems = await db.query.itemTypes.findMany({
+    where: eq(itemTypes.type, "quantity"),
+    columns: { id: true, name: true, quantityAvailable: true, minimumAlert: true },
+    with: {
+      department: { columns: { name: true } },
+    },
+  });
+
+  const lowStockAlerts = lowStockItems.filter(
+    (item) =>
+      (item.minimumAlert ?? 0) > 0 &&
+      (item.quantityAvailable ?? 0) <= (item.minimumAlert ?? 0)
+  );
+
+  const overdueCount = await db
+    .select({ count: count() })
+    .from(requests)
+    .where(eq(requests.status, "overdue"));
+
+  const overdueNum = overdueCount[0]?.count || 0;
+
+  const alerts: { id: string; type: "warning" | "error"; message: string; department: string; href?: string }[] = [];
+
+  for (const item of lowStockAlerts) {
+    alerts.push({
+      id: `low-${item.id}`,
       type: "warning",
-      message: 'מלאי נמוך: סוללות AA (5 יח")',
-      department: "אפסנאות",
-    },
-    {
-      id: "2",
+      message: `מלאי נמוך: ${item.name} (${item.quantityAvailable ?? 0} יח')`,
+      department: item.department?.name || "-",
+      href: `/dashboard/inventory/${item.id}`,
+    });
+  }
+
+  if (overdueNum > 0) {
+    alerts.push({
+      id: "overdue",
       type: "error",
-      message: "3 פריטים באיחור החזרה",
+      message: `${overdueNum} פריטים באיחור החזרה`,
       department: "כללי",
-    },
-  ];
+      href: "/dashboard/loans",
+    });
+  }
 
   if (alerts.length === 0) return null;
 
@@ -254,9 +332,13 @@ async function SystemAlerts() {
                   <p className="text-xs text-slate-500">{alert.department}</p>
                 </div>
               </div>
-              <Button size="sm" variant="outline">
-                טפל
-              </Button>
+              {alert.href && (
+                <Link href={alert.href}>
+                  <Button size="sm" variant="outline">
+                    טפל
+                  </Button>
+                </Link>
+              )}
             </div>
           ))}
         </div>
