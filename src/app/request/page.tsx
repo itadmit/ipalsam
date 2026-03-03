@@ -1,10 +1,10 @@
-import { Suspense } from "react";
-import { RequestEntryContent } from "./request-entry-content";
+import { redirect } from "next/navigation";
 
-export default function RequestEntryPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">טוען...</div>}>
-      <RequestEntryContent />
-    </Suspense>
-  );
+export default async function RequestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  redirect(error ? `/profile?error=${encodeURIComponent(error)}` : "/profile");
 }

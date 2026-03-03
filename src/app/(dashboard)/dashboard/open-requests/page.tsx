@@ -11,7 +11,8 @@ import {
 } from "@/db/schema";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { OpenRequestItemActions } from "./open-request-item-actions";
-import { Package, User } from "lucide-react";
+import { User, Store, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/utils";
 
 export default async function OpenRequestsPage() {
@@ -90,11 +91,27 @@ export default async function OpenRequestsPage() {
           pendingRequests.map((req) => (
             <Card key={req.id}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <User className="w-4 h-4" />
+                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                  <User className="w-4 h-4 shrink-0" />
                   {req.requester
                     ? `${req.requester.firstName} ${req.requester.lastName}`
                     : req.requesterName || req.requesterPhone || "מבקש (חנות)"}
+                  <Badge
+                    variant={req.source === "public_store" ? "secondary" : "outline"}
+                    className="text-xs shrink-0"
+                  >
+                    {req.source === "public_store" ? (
+                      <>
+                        <Store className="w-3 h-3 ml-1" />
+                        מהחנות
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-3 h-3 ml-1" />
+                        בקשה פתוחה
+                      </>
+                    )}
+                  </Badge>
                   <span className="text-slate-500 font-normal">
                     • {req.department?.name} • {formatDateTime(req.createdAt)}
                   </span>

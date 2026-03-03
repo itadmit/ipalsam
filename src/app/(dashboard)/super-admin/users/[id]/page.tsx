@@ -63,7 +63,7 @@ export default async function EditUserPage({
   const phoneDigits = (user.phone || "").replace(/\D/g, "").slice(-10);
   const personalLink = phoneDigits
     ? `${baseUrl}/profile/${phoneDigits}`
-    : `${baseUrl}/request`;
+    : `${baseUrl}/profile`;
   const qrDataUrl = personalLink
     ? await QRCode.toDataURL(personalLink, { width: 160, margin: 1 })
     : null;

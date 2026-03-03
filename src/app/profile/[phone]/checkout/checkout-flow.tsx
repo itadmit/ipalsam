@@ -222,7 +222,7 @@ export function CheckoutFlow({
       } else {
         sessionStorage.removeItem("request-cart");
         sessionStorage.removeItem("request-from");
-        router.push("/request/success");
+        router.push("/profile/success");
       }
     } catch {
       setError("אירעה שגיאה. אנא נסה שוב");

@@ -30,6 +30,7 @@ import { signOut } from "next-auth/react";
 interface SidebarProps {
   user: SessionUser;
   pendingOpenRequests?: number;
+  hasOpenRequestsAccess?: boolean;
 }
 
 interface NavItem {
@@ -171,7 +172,7 @@ function NavContent({
   );
 }
 
-export function Sidebar({ user, pendingOpenRequests = 0 }: SidebarProps) {
+export function Sidebar({ user, pendingOpenRequests = 0, hasOpenRequestsAccess = false }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -215,12 +216,18 @@ export function Sidebar({ user, pendingOpenRequests = 0 }: SidebarProps) {
       href: "/dashboard/open-requests",
       label: "בקשות פתוחות",
       icon: ClipboardList,
-      show: canAccessAdmin || isDeptCommander,
+      show: canAccessAdmin || isDeptCommander || !!hasOpenRequestsAccess,
     },
     {
       href: "/dashboard/profile",
       label: "פרופיל שלי",
       icon: UserCircle,
+      show: true,
+    },
+    {
+      href: "/dashboard/profile/edit",
+      label: "הגדרות פרופיל",
+      icon: Settings,
       show: true,
     },
     {

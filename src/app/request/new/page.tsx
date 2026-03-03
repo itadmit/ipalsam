@@ -12,12 +12,12 @@ export default async function SoldierRequestNewPage({
   const token = params.token;
   const fromPhone = params.from;
   if (!token) {
-    redirect("/request");
+    redirect("/profile");
   }
 
   const data = await getSoldierRequestData(token, fromPhone);
   if ("error" in data) {
-    redirect(`/request?error=${encodeURIComponent(data.error || "שגיאה")}`);
+    redirect(`/profile?error=${encodeURIComponent(data.error || "שגיאה")}`);
   }
 
   return (

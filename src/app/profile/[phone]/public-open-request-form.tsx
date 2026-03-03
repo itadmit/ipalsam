@@ -206,10 +206,10 @@ export function PublicOpenRequestForm({
             </div>
           </div>
           <h2 className="text-xl font-semibold text-slate-900">
-            בקשה פתוחה – {storeName}
+            בקשה חדשה – {storeName}
           </h2>
           <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
-            הזמן ציוד מהספק. {storeName} יקבל התראה ויוכל לאשר או לדחות כל פריט.
+            ניתן להזמין בטופס הבא ציוד מ־{storeName}. הוא יקבל התראה ויצטרך לאשר ידנית.
           </p>
         </div>
 
@@ -291,27 +291,27 @@ export function PublicOpenRequestForm({
             <label className="text-sm font-medium text-slate-700 block mb-3">פריטים</label>
             <div className="space-y-3">
               {rows.map((row) => (
-                <div key={row.id} className="flex flex-row-reverse gap-3 p-3 rounded-lg bg-white border border-slate-100">
-                  <div className="shrink-0 pt-0.5">
+                <div key={row.id} className="p-3 rounded-lg bg-white border border-slate-100 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      label="שם פריט"
+                      placeholder="שם הפריט"
+                      value={row.itemName}
+                      onChange={(e) => updateRow(row.id, "itemName", e.target.value)}
+                      className="text-base flex-1 min-w-0"
+                    />
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       onClick={() => removeRow(row.id)}
                       disabled={rows.length <= 1}
-                      className="shrink-0 h-8 w-8 text-slate-400 hover:text-red-500"
+                      className="shrink-0 h-8 w-8 text-slate-400 hover:text-red-500 self-end"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <Input
-                      label="שם פריט"
-                      placeholder="שם הפריט"
-                      value={row.itemName}
-                      onChange={(e) => updateRow(row.id, "itemName", e.target.value)}
-                      className="text-base"
-                    />
+                  <div className="space-y-2">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">כמות</label>
                       <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">

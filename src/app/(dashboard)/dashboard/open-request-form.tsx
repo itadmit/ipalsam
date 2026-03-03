@@ -148,7 +148,7 @@ export function OpenRequestForm({ departments, trigger }: OpenRequestFormProps) 
             <div className="space-y-2">
               {rows.map((row) => (
                 <div key={row.id} className="space-y-2">
-                  <div className="flex justify-start -mb-2">
+                  <div className="flex justify-end -mb-2">
                     <Button
                       type="button"
                       variant="ghost"

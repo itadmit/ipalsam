@@ -23,7 +23,7 @@ export async function QuickRequestCard({ userId }: QuickRequestCardProps) {
   const baseUrl = `${protocol}://${host}`;
 
   const phoneDigits = (user?.phone || "").replace(/\D/g, "").slice(-10);
-  const personalLink = phoneDigits ? `${baseUrl}/profile/${phoneDigits}` : `${baseUrl}/request`;
+  const personalLink = phoneDigits ? `${baseUrl}/profile/${phoneDigits}` : `${baseUrl}/profile`;
   const requestUrl = personalLink;
 
   const isDeptCommander = user?.role === "dept_commander";

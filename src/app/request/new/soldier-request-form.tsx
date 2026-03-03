@@ -136,7 +136,7 @@ export function SoldierRequestForm({
       if (result.error) {
         setError(result.error);
       } else {
-        router.push("/request/success");
+        router.push("/profile/success");
       }
     } catch {
       setError("אירעה שגיאה. אנא נסה שוב");
