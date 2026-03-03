@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Heebo, Smooch_Sans } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
+import { AuthSessionProvider } from "@/components/providers/session-provider";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -32,7 +33,9 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl">
       <body className={`${heebo.variable} ${smoochSans.variable} font-sans`}>
+        <AuthSessionProvider>
         <ToastProvider>{children}</ToastProvider>
+      </AuthSessionProvider>
       </body>
     </html>
   );

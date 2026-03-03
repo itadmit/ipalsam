@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, Eye, EyeOff } from "lucide-react";
@@ -9,6 +10,7 @@ import { changePassword } from "@/actions/auth";
 
 export function ChangePasswordForm() {
   const router = useRouter();
+  const { update } = useSession();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -44,6 +46,7 @@ export function ChangePasswordForm() {
       if (result.error) {
         setError(result.error);
       } else {
+        await update({ user: { mustChangePassword: false } });
         router.push("/dashboard");
         router.refresh();
       }
@@ -114,8 +117,8 @@ export function ChangePasswordForm() {
         </div>
       </div>
 
-      <Button type="submit" className="w-full h-12 text-base" loading={loading}>
-        שמור סיסמה חדשה
+      <Button type="submit" className="w-full h-12 text-base" loading={loading} disabled={loading}>
+        {loading ? "שומר..." : "שמור סיסמה חדשה"}
       </Button>
     </form>
   );

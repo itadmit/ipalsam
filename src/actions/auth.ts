@@ -25,10 +25,17 @@ export async function changePassword(
     return { error: "משתמש לא נמצא" };
   }
 
-  // Verify current password
-  const isValid = await compare(currentPassword, user.password);
+  // Verify current password (support both 0527036966 and 527036966 formats)
+  const normalizedInput = currentPassword.replace(/\D/g, "");
+  const withLeadingZero = normalizedInput.length === 9 ? `0${normalizedInput}` : normalizedInput;
+  const withoutLeadingZero = normalizedInput.replace(/^0+/, "") || normalizedInput;
+
+  const isValid =
+    (await compare(currentPassword, user.password)) ||
+    (await compare(withLeadingZero, user.password)) ||
+    (await compare(withoutLeadingZero, user.password));
   if (!isValid) {
-    return { error: "סיסמה נוכחית שגויה" };
+    return { error: "סיסמה נוכחית שגויה. הזן את מספר הטלפון שלך (כמו בהתחברות)" };
   }
 
   // Hash new password
