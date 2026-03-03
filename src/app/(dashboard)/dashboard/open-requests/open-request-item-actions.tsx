@@ -108,7 +108,7 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
               />
             </div>
           </div>
-          <DialogFooter className="pt-4 !pb-0 border-t border-slate-200 gap-2">
+          <DialogFooter className="pt-4 !pb-0 !px-3 border-t border-slate-200 gap-2">
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
               ביטול
             </Button>
@@ -140,7 +140,7 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
               />
             </div>
           </div>
-          <DialogFooter className="pt-4 !pb-0 border-t border-slate-200 gap-2">
+          <DialogFooter className="pt-4 !pb-0 !px-3 border-t border-slate-200 gap-2">
             <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
               ביטול
             </Button>
