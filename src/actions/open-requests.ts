@@ -1,0 +1,232 @@
+"use server";
+
+import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import {
+  openRequests,
+  openRequestItems,
+  handoverDepartments,
+  soldierDepartments,
+  departments,
+  auditLogs,
+  users,
+} from "@/db/schema";
+import { eq, and, inArray, or } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
+export interface OpenRequestItemInput {
+  itemName: string;
+  quantity: number;
+  notes?: string;
+}
+
+export async function createOpenRequest(
+  departmentId: string,
+  items: OpenRequestItemInput[],
+  options?: { signature?: string; source?: "dashboard" | "public_store"; requesterName?: string; requesterPhone?: string }
+) {
+  const session = await auth();
+  const isPublic = options?.source === "public_store";
+
+  if (!isPublic) {
+    if (!session?.user) return { error: "יש להתחבר" };
+    if (session.user.role !== "soldier" && session.user.role !== "dept_commander") {
+      return { error: "רק חיילים יכולים ליצור בקשות פתוחות" };
+    }
+    const userDept = session.user.departmentId;
+    const soldierDeptsRows = await db.query.soldierDepartments.findMany({
+      where: eq(soldierDepartments.userId, session.user.id),
+      columns: { departmentId: true },
+    });
+    const soldierDeptIds = soldierDeptsRows.map((r) => r.departmentId).filter(Boolean) as string[];
+    const canRequestFrom = userDept ? [userDept, ...soldierDeptIds] : soldierDeptIds;
+    if (!canRequestFrom.includes(departmentId)) {
+      return { error: "אין הרשאה לבקש ממחלקה זו" };
+    }
+  }
+
+  const validItems = items.filter((i) => (i.itemName || "").trim().length > 0 && (i.quantity || 0) > 0);
+  if (validItems.length === 0) {
+    return { error: "יש להוסיף לפחות פריט אחד" };
+  }
+
+  const [newRequest] = await db
+    .insert(openRequests)
+    .values({
+      requesterId: !isPublic && session?.user ? session.user.id : null,
+      requesterName: options?.requesterName || null,
+      requesterPhone: options?.requesterPhone || null,
+      departmentId,
+      signature: options?.signature || null,
+      source: options?.source || "dashboard",
+    })
+    .returning();
+
+  if (!newRequest) return { error: "שגיאה ביצירת הבקשה" };
+
+  await db.insert(openRequestItems).values(
+    validItems.map((i) => ({
+      openRequestId: newRequest.id,
+      itemName: i.itemName.trim(),
+      quantity: i.quantity || 1,
+      notes: i.notes?.trim() || null,
+    }))
+  );
+
+  await db.insert(auditLogs).values({
+    userId: session?.user?.id || null,
+    action: "create_open_request",
+    entityType: "open_request",
+    entityId: newRequest.id,
+    newValues: { departmentId, itemsCount: validItems.length, source: options?.source },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/open-requests");
+  return { success: true, id: newRequest.id };
+}
+
+export async function createOpenRequestFromPublicStore(
+  departmentId: string,
+  handoverPhone: string,
+  items: OpenRequestItemInput[],
+  requesterId: string
+) {
+  const phoneDigits = handoverPhone.replace(/\D/g, "").slice(-10);
+  if (phoneDigits.length < 9) return { error: "לינק לא תקין" };
+  if (!requesterId) return { error: "יש לזהות את המבקש" };
+
+  const allDeptCommanders = await db.query.users.findMany({
+    where: eq(users.role, "dept_commander"),
+    columns: { id: true, phone: true, departmentId: true },
+  });
+  const match = allDeptCommanders.find((u) => {
+    const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+    return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
+  });
+  if (!match?.departmentId) return { error: "חנות לא נמצאה" };
+
+  const handoverDepts = await db.query.handoverDepartments.findMany({
+    where: eq(handoverDepartments.userId, match.id),
+    columns: { departmentId: true },
+  });
+  const storeDeptIds = handoverDepts.length > 0
+    ? handoverDepts.map((d) => d.departmentId)
+    : [match.departmentId];
+  if (!storeDeptIds.includes(departmentId)) return { error: "מחלקה לא שייכת לחנות" };
+
+  const validItems = items.filter((i) => (i.itemName || "").trim().length > 0 && (i.quantity || 0) > 0);
+  if (validItems.length === 0) return { error: "יש להוסיף לפחות פריט אחד" };
+
+  const [newRequest] = await db
+    .insert(openRequests)
+    .values({
+      requesterId,
+      departmentId,
+      source: "public_store",
+    })
+    .returning();
+
+  if (!newRequest) return { error: "שגיאה ביצירת הבקשה" };
+
+  await db.insert(openRequestItems).values(
+    validItems.map((i) => ({
+      openRequestId: newRequest.id,
+      itemName: i.itemName.trim(),
+      quantity: i.quantity || 1,
+      notes: i.notes?.trim() || null,
+    }))
+  );
+
+  revalidatePath("/dashboard/open-requests");
+  return { success: true, id: newRequest.id };
+}
+
+export async function approveOpenRequestItem(itemId: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "יש להתחבר" };
+
+  const item = await db.query.openRequestItems.findFirst({
+    where: eq(openRequestItems.id, itemId),
+    with: { openRequest: { with: { department: true } } },
+  });
+
+  if (!item || item.status !== "pending") return { error: "פריט לא נמצא או כבר טופל" };
+
+  const deptId = item.openRequest.departmentId;
+  const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
+  const handover = await db.query.handoverDepartments.findFirst({
+    where: and(
+      eq(handoverDepartments.userId, session.user.id),
+      eq(handoverDepartments.departmentId, deptId)
+    ),
+  });
+  const canApprove = session.user.role === "super_admin" || session.user.role === "hq_commander" || isDeptCommander || handover;
+
+  if (!canApprove) return { error: "אין הרשאה לאשר" };
+
+  await db
+    .update(openRequestItems)
+    .set({
+      status: "approved",
+      approvedById: session.user.id,
+      approvedAt: new Date(),
+    })
+    .where(eq(openRequestItems.id, itemId));
+
+  await db.insert(auditLogs).values({
+    userId: session.user.id,
+    action: "approve_open_request_item",
+    entityType: "open_request_item",
+    entityId: itemId,
+    newValues: { itemName: item.itemName },
+  });
+
+  revalidatePath("/dashboard/open-requests");
+  return { success: true };
+}
+
+export async function rejectOpenRequestItem(itemId: string, reason?: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "יש להתחבר" };
+
+  const item = await db.query.openRequestItems.findFirst({
+    where: eq(openRequestItems.id, itemId),
+    with: { openRequest: true },
+  });
+
+  if (!item || item.status !== "pending") return { error: "פריט לא נמצא או כבר טופל" };
+
+  const deptId = item.openRequest.departmentId;
+  const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
+  const handover = await db.query.handoverDepartments.findFirst({
+    where: and(
+      eq(handoverDepartments.userId, session.user.id),
+      eq(handoverDepartments.departmentId, deptId)
+    ),
+  });
+  const canReject = session.user.role === "super_admin" || session.user.role === "hq_commander" || isDeptCommander || handover;
+
+  if (!canReject) return { error: "אין הרשאה לדחות" };
+
+  await db
+    .update(openRequestItems)
+    .set({
+      status: "rejected",
+      approvedById: session.user.id,
+      approvedAt: new Date(),
+      rejectionReason: reason || null,
+    })
+    .where(eq(openRequestItems.id, itemId));
+
+  await db.insert(auditLogs).values({
+    userId: session.user.id,
+    action: "reject_open_request_item",
+    entityType: "open_request_item",
+    entityId: itemId,
+    newValues: { itemName: item.itemName, reason },
+  });
+
+  revalidatePath("/dashboard/open-requests");
+  return { success: true };
+}

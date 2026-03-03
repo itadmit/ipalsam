@@ -16,6 +16,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { QuickRequestCard } from "./quick-request-card";
+import { OpenRequestCard } from "./open-request-card";
 import type { SessionUser } from "@/types";
 import { db } from "@/db";
 import { itemTypes, requests } from "@/db/schema";
@@ -405,6 +406,10 @@ export function DeptDashboard({ user }: DeptDashboardProps) {
 
         <Suspense fallback={<div className="h-48 rounded-xl bg-slate-100 animate-pulse" />}>
           <QuickRequestCard userId={user.id} />
+        </Suspense>
+
+        <Suspense fallback={<div className="h-32 rounded-xl bg-slate-100 animate-pulse" />}>
+          <OpenRequestCard userId={user.id} />
         </Suspense>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

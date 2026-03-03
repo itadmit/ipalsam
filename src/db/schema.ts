@@ -107,6 +107,7 @@ export const departments = pgTable("departments", {
   allowScheduled: boolean("allow_scheduled").default(true).notNull(),
   autoApproveRequests: boolean("auto_approve_requests").default(false).notNull(),
   visibleInHqDashboard: boolean("visible_in_hq_dashboard").default(true).notNull(),
+  showOpenRequestButton: boolean("show_open_request_button").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -294,6 +295,41 @@ export const systemSettings = pgTable("system_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// בקשות פתוחות – הזמנה מספק (ללא מלאי)
+export const openRequestStatusEnum = pgEnum("open_request_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+export const openRequests = pgTable("open_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  requesterId: uuid("requester_id").references(() => users.id, { onDelete: "cascade" }),
+  requesterName: text("requester_name"),
+  requesterPhone: text("requester_phone"),
+  departmentId: uuid("department_id")
+    .references(() => departments.id, { onDelete: "cascade" })
+    .notNull(),
+  signature: text("signature"), // חתימה דיגיטלית (data URL)
+  source: text("source"), // "dashboard" | "public_store"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const openRequestItems = pgTable("open_request_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  openRequestId: uuid("open_request_id")
+    .references(() => openRequests.id, { onDelete: "cascade" })
+    .notNull(),
+  itemName: text("item_name").notNull(),
+  quantity: integer("quantity").default(1).notNull(),
+  notes: text("notes"),
+  status: openRequestStatusEnum("status").default("pending").notNull(),
+  approvedById: uuid("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Audit Log
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -344,6 +380,7 @@ export const departmentsRelations = relations(departments, ({ one, many }) => ({
   requests: many(requests),
   handoverDepartments: many(handoverDepartments),
   soldierDepartments: many(soldierDepartments),
+  openRequests: many(openRequests),
 }));
 
 export const handoverDepartmentsRelations = relations(handoverDepartments, ({ one }) => ({
@@ -382,11 +419,35 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   handoverDepartments: many(handoverDepartments),
   soldierDepartments: many(soldierDepartments),
   auditLogs: many(auditLogs),
+  openRequests: many(openRequests),
 }));
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(users, {
     fields: [auditLogs.userId],
+    references: [users.id],
+  }),
+}));
+
+export const openRequestsRelations = relations(openRequests, ({ one, many }) => ({
+  requester: one(users, {
+    fields: [openRequests.requesterId],
+    references: [users.id],
+  }),
+  department: one(departments, {
+    fields: [openRequests.departmentId],
+    references: [departments.id],
+  }),
+  items: many(openRequestItems),
+}));
+
+export const openRequestItemsRelations = relations(openRequestItems, ({ one }) => ({
+  openRequest: one(openRequests, {
+    fields: [openRequestItems.openRequestId],
+    references: [openRequests.id],
+  }),
+  approvedBy: one(users, {
+    fields: [openRequestItems.approvedById],
     references: [users.id],
   }),
 }));

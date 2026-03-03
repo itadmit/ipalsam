@@ -25,7 +25,8 @@ export default async function RequestStorePage({
         storeName={data.storeName}
         department={data.department}
         items={data.items}
-        handoverPhone={phoneDigits}
+        handoverPhone={data.handoverPhone || phoneDigits}
+        showOpenRequestButton={data.showOpenRequestButton}
       />
     </Suspense>
   );

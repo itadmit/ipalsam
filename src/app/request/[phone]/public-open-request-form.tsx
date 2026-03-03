@@ -1,0 +1,337 @@
+"use client";
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { createOpenRequestFromPublicStore } from "@/actions/open-requests";
+import { identifyOrCreateSoldier, searchSoldiersByPhone } from "@/actions/soldier-request";
+import { Package, Plus, Trash2, Send, User } from "lucide-react";
+
+interface PublicOpenRequestFormProps {
+  departmentId: string;
+  handoverPhone: string;
+  storeName: string;
+}
+
+interface ItemRow {
+  id: string;
+  itemName: string;
+  quantity: number;
+  notes: string;
+}
+
+function generateId() {
+  return `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export function PublicOpenRequestForm({
+  departmentId,
+  handoverPhone,
+  storeName,
+}: PublicOpenRequestFormProps) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phoneMatches, setPhoneMatches] = useState<
+    { id: string; phone: string; name: string; role?: string }[]
+  >([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const selectingRef = useRef(false);
+  const [rows, setRows] = useState<ItemRow[]>([
+    { id: generateId(), itemName: "", quantity: 1, notes: "" },
+  ]);
+
+  const addRow = () => {
+    setRows((prev) => [...prev, { id: generateId(), itemName: "", quantity: 1, notes: "" }]);
+  };
+
+  const removeRow = (id: string) => {
+    if (rows.length <= 1) return;
+    setRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const updateRow = (id: string, field: keyof ItemRow, value: string | number) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const searchPhone = useCallback(async (value: string) => {
+    if (value.replace(/\D/g, "").length < 2) {
+      setPhoneMatches([]);
+      setShowDropdown(false);
+      return;
+    }
+    try {
+      const result = await searchSoldiersByPhone(value);
+      const matches = "matches" in result ? result.matches : [];
+      setPhoneMatches(matches);
+      if (!selectingRef.current) setShowDropdown(true);
+    } catch {
+      setPhoneMatches([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => searchPhone(phone), 150);
+    return () => clearTimeout(t);
+  }, [phone, searchPhone]);
+
+  const selectMatch = useCallback((match: { id: string; phone: string; name: string }) => {
+    selectingRef.current = true;
+    setPhone(match.phone);
+    setFullName(match.name);
+    setShowDropdown(false);
+    setPhoneMatches([]);
+    selectingRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess(false);
+
+    const validItems = rows.filter(
+      (r) => (r.itemName || "").trim().length > 0 && (r.quantity || 0) > 0
+    );
+    if (validItems.length === 0) {
+      setError("יש להוסיף לפחות פריט אחד");
+      return;
+    }
+    if (!phone.trim()) {
+      setError("יש להזין טלפון");
+      return;
+    }
+    if (!fullName.trim()) {
+      setError("יש להזין שם מלא");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let requesterId: string | null = null;
+
+      const identifyFirst = await identifyOrCreateSoldier(phone);
+      if ("token" in identifyFirst && identifyFirst.token) {
+        const { verifyRequestToken } = await import("@/lib/request-token");
+        const verified = verifyRequestToken(identifyFirst.token);
+        if (verified) requesterId = verified.userId;
+        if (identifyFirst.soldierName) setFullName(identifyFirst.soldierName);
+      } else if ("needCreate" in identifyFirst && fullName.trim()) {
+        const nameParts = fullName.trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || fullName.trim();
+        const result = await identifyOrCreateSoldier(phone, {
+          firstName,
+          lastName,
+          departmentId,
+        });
+        if ("error" in result) {
+          setError(result.error || "");
+          setLoading(false);
+          return;
+        }
+        if ("token" in result && result.token) {
+          const { verifyRequestToken } = await import("@/lib/request-token");
+          const verified = verifyRequestToken(result.token);
+          if (verified) requesterId = verified.userId;
+        }
+      } else if ("error" in identifyFirst) {
+        setError(identifyFirst.error || "");
+        setLoading(false);
+        return;
+      }
+
+      if (!requesterId) {
+        setError("לא ניתן לזהות את המבקש. אנא נסה שוב");
+        setLoading(false);
+        return;
+      }
+
+      const result = await createOpenRequestFromPublicStore(
+        departmentId,
+        handoverPhone,
+        validItems.map((r) => ({
+          itemName: r.itemName.trim(),
+          quantity: r.quantity,
+          notes: r.notes.trim() || undefined,
+        })),
+        requesterId
+      );
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setSuccess(true);
+        setRows([{ id: generateId(), itemName: "", quantity: 1, notes: "" }]);
+        setTimeout(() => {
+          setOpen(false);
+          setSuccess(false);
+        }, 1500);
+      }
+    } catch {
+      setError("אירעה שגיאה. אנא נסה שוב");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-full gap-2" variant="outline" size="lg">
+          <Send className="w-5 h-5" />
+          שלח בקשה
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            בקשה פתוחה – {storeName}
+          </DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-slate-600">
+          הזמן ציוד מהספק. {storeName} יקבל התראה ויוכל לאשר או לדחות כל פריט.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+              הבקשה נשלחה בהצלחה!
+            </div>
+          )}
+
+          <div>
+            <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+              <User className="w-4 h-4" />
+              פרטי המבקש
+            </h4>
+            <div className="space-y-3">
+              <div className="relative" ref={dropdownRef}>
+                <Input
+                  label="טלפון"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setFullName("");
+                  }}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                  onFocus={() => phone.replace(/\D/g, "").length >= 2 && setShowDropdown(true)}
+                  placeholder="הזן טלפון"
+                  dir="ltr"
+                  required
+                />
+                {showDropdown && phone.replace(/\D/g, "").length >= 2 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-48 overflow-auto">
+                    {phoneMatches.length > 0 ? (
+                      phoneMatches.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-right text-sm hover:bg-slate-50 flex flex-col items-end"
+                          onClick={() => selectMatch(m)}
+                        >
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-slate-500 text-xs" dir="ltr">{m.phone}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                        לא נמצאו תוצאות – הזן שם מלא ליצירת משתמש
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <Input
+                label="שם מלא"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="שם מלא"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-slate-700">פריטים</label>
+              <Button type="button" variant="ghost" size="sm" onClick={addRow} className="gap-1">
+                <Plus className="w-4 h-4" />
+                הוסף
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {rows.map((row) => (
+                <div key={row.id} className="flex gap-2 items-start">
+                  <Input
+                    placeholder="שם הפריט"
+                    value={row.itemName}
+                    onChange={(e) => updateRow(row.id, "itemName", e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="כמות"
+                    value={row.quantity || ""}
+                    onChange={(e) => updateRow(row.id, "quantity", parseInt(e.target.value) || 1)}
+                    className="w-20"
+                  />
+                  <Input
+                    placeholder="הערות"
+                    value={row.notes}
+                    onChange={(e) => updateRow(row.id, "notes", e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeRow(row.id)}
+                    disabled={rows.length <= 1}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Button type="submit" className="w-full" loading={loading} disabled={success}>
+            שלח
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

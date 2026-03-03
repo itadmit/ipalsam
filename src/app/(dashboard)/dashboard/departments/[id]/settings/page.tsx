@@ -49,6 +49,7 @@ export default async function DepartmentSettingsPage({
     allowScheduled: department.allowScheduled,
     autoApproveRequests: department.autoApproveRequests ?? false,
     visibleInHqDashboard: (department as { visibleInHqDashboard?: boolean }).visibleInHqDashboard ?? true,
+    showOpenRequestButton: (department as { showOpenRequestButton?: boolean }).showOpenRequestButton ?? false,
   };
 
   return (

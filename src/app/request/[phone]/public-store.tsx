@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, ShoppingCart, Plus, Minus } from "lucide-react";
+import { PublicOpenRequestForm } from "./public-open-request-form";
 
 interface PublicStoreProps {
   storeName: string;
   department: { id: string; name: string };
   items: { id: string; name: string; departmentId: string; inStock: boolean }[];
   handoverPhone: string;
+  showOpenRequestButton?: boolean;
 }
 
 interface CartItem {
@@ -25,6 +27,7 @@ export function PublicStore({
   department,
   items,
   handoverPhone,
+  showOpenRequestButton = false,
 }: PublicStoreProps) {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -82,31 +85,42 @@ export function PublicStore({
               פריטים
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-slate-100 hover:bg-slate-50/50"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">{item.name}</p>
-                    <p className={item.inStock ? "text-sm text-emerald-600" : "text-sm text-slate-400"}>
-                      {item.inStock ? "במלאי" : "אזל המלאי"}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => addToCart(item)}
-                    disabled={!item.inStock}
-                    className="gap-1.5"
+              {items.length === 0 ? (
+                <p className="text-slate-500 text-center py-6">אין פריטים במלאי</p>
+              ) : (
+                items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-slate-100 hover:bg-slate-50/50"
                   >
-                    <Plus className="w-4 h-4" />
-                    הוסף
-                  </Button>
-                </div>
-              ))}
+                    <div>
+                      <p className="font-medium text-slate-900">{item.name}</p>
+                      <p className={item.inStock ? "text-sm text-emerald-600" : "text-sm text-slate-400"}>
+                        {item.inStock ? "במלאי" : "אזל המלאי"}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => addToCart(item)}
+                      disabled={!item.inStock}
+                      className="gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" />
+                      הוסף
+                    </Button>
+                  </div>
+                ))
+              )}
             </div>
+            {showOpenRequestButton && (
+              <PublicOpenRequestForm
+                departmentId={department.id}
+                handoverPhone={handoverPhone}
+                storeName={storeName}
+              />
+            )}
           </CardContent>
         </Card>
 

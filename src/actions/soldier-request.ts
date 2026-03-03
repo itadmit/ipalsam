@@ -59,9 +59,15 @@ export async function getPublicStoreData(handoverPhone: string) {
 
   const dept = await db.query.departments.findFirst({
     where: eq(departments.id, handoverUser.departmentId),
-    columns: { id: true, name: true },
+    columns: { id: true, name: true, showOpenRequestButton: true },
   });
   if (!dept) return { error: "מחלקה לא נמצאה" };
+
+  const storeDepts = await db.query.departments.findMany({
+    where: inArray(departments.id, storeDeptIds),
+    columns: { showOpenRequestButton: true },
+  });
+  const showOpenRequestButton = storeDepts.some((d) => d.showOpenRequestButton);
 
   const items = await db.query.itemTypes.findMany({
     where: and(
@@ -94,6 +100,8 @@ export async function getPublicStoreData(handoverPhone: string) {
     storeName: `${handoverUser.firstName || ""} ${handoverUser.lastName || ""}`.trim() || "החנות",
     department: { id: dept.id, name: dept.name },
     items: itemsWithStock,
+    handoverPhone: phoneDigits,
+    showOpenRequestButton: showOpenRequestButton || itemsWithStock.length === 0,
   };
 }
 

@@ -28,6 +28,7 @@ import { signOut } from "next-auth/react";
 
 interface SidebarProps {
   user: SessionUser;
+  pendingOpenRequests?: number;
 }
 
 interface NavItem {
@@ -44,6 +45,7 @@ function NavContent({
   canAccessAdmin,
   pathname,
   onLinkClick,
+  pendingOpenRequests = 0,
 }: {
   user: SessionUser;
   mainNavItems: NavItem[];
@@ -51,6 +53,7 @@ function NavContent({
   canAccessAdmin: boolean;
   pathname: string;
   onLinkClick: () => void;
+  pendingOpenRequests?: number;
 }) {
   return (
     <>
@@ -99,6 +102,7 @@ function NavContent({
           .filter((item) => item.show)
           .map((item) => {
             const isActive = pathname === item.href;
+            const showBadge = item.href === "/dashboard/open-requests" && pendingOpenRequests > 0;
             return (
               <Link
                 key={item.href}
@@ -113,6 +117,11 @@ function NavContent({
               >
                 <item.icon className="w-5 h-5" />
                 {item.label}
+                {showBadge && (
+                  <span className="mr-auto bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {pendingOpenRequests}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -161,7 +170,7 @@ function NavContent({
   );
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, pendingOpenRequests = 0 }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -199,6 +208,12 @@ export function Sidebar({ user }: SidebarProps) {
       href: "/dashboard/loans",
       label: "השאלות פעילות",
       icon: Clock,
+      show: canAccessAdmin || isDeptCommander,
+    },
+    {
+      href: "/dashboard/open-requests",
+      label: "בקשות פתוחות",
+      icon: ClipboardList,
       show: canAccessAdmin || isDeptCommander,
     },
     {
@@ -301,6 +316,7 @@ export function Sidebar({ user }: SidebarProps) {
             canAccessAdmin={canAccessAdmin}
             pathname={pathname}
             onLinkClick={handleLinkClick}
+            pendingOpenRequests={pendingOpenRequests}
           />
         </div>
       </aside>
@@ -314,6 +330,7 @@ export function Sidebar({ user }: SidebarProps) {
           canAccessAdmin={canAccessAdmin}
           pathname={pathname}
           onLinkClick={handleLinkClick}
+          pendingOpenRequests={pendingOpenRequests}
         />
       </aside>
     </>

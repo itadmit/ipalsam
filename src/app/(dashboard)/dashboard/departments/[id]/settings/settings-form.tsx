@@ -17,6 +17,7 @@ interface DepartmentSettingsFormProps {
     allowScheduled: boolean;
     autoApproveRequests: boolean;
     visibleInHqDashboard: boolean;
+    showOpenRequestButton: boolean;
   };
   isSuperAdmin?: boolean;
 }
@@ -34,6 +35,7 @@ export function DepartmentSettingsForm({ department, isSuperAdmin }: DepartmentS
   const [allowScheduled, setAllowScheduled] = useState(department.allowScheduled);
   const [autoApproveRequests, setAutoApproveRequests] = useState(department.autoApproveRequests);
   const [visibleInHqDashboard, setVisibleInHqDashboard] = useState(department.visibleInHqDashboard);
+  const [showOpenRequestButton, setShowOpenRequestButton] = useState(department.showOpenRequestButton);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +51,7 @@ export function DepartmentSettingsForm({ department, isSuperAdmin }: DepartmentS
         allowImmediate,
         allowScheduled,
         autoApproveRequests,
+        showOpenRequestButton,
         ...(isSuperAdmin && { visibleInHqDashboard }),
       });
 
@@ -153,6 +156,18 @@ export function DepartmentSettingsForm({ department, isSuperAdmin }: DepartmentS
             />
             <label htmlFor="autoApproveRequests" className="text-sm text-slate-700">
               אשר אוטומטית בקשות מהחיילים (השאלה מהירה)
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="showOpenRequestButton"
+              checked={showOpenRequestButton}
+              onChange={(e) => setShowOpenRequestButton(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <label htmlFor="showOpenRequestButton" className="text-sm text-slate-700">
+              הצג כפתור בקשה פתוחה (כשאין מלאי – הזמנה מספק)
             </label>
           </div>
           {isSuperAdmin && (
