@@ -12,6 +12,8 @@ interface PublicOpenRequestFormProps {
   departmentId: string;
   handoverPhone: string;
   storeName: string;
+  /** inline = מוצג בעמוד הפרופיל כמו החנות, modal = נפתח בחלון */
+  variant?: "inline" | "modal";
 }
 
 interface ItemRow {
@@ -29,6 +31,7 @@ export function PublicOpenRequestForm({
   departmentId,
   handoverPhone,
   storeName,
+  variant = "modal",
 }: PublicOpenRequestFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -175,7 +178,7 @@ export function PublicOpenRequestForm({
         setSuccess(true);
         setRows([{ id: generateId(), itemName: "", quantity: 1, notes: "" }]);
         setTimeout(() => {
-          setOpen(false);
+          if (variant === "modal") setOpen(false);
           setSuccess(false);
         }, 1500);
       }
@@ -186,30 +189,8 @@ export function PublicOpenRequestForm({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full gap-2" variant="outline" size="lg">
-          <Send className="w-5 h-5" />
-          שלח בקשה
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
-        <div className="pt-8 pb-6 px-6 text-center border-b border-slate-100">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-              <Package className="w-9 h-9 text-slate-500" />
-            </div>
-          </div>
-          <h2 className="text-xl font-semibold text-slate-900">
-            בקשה חדשה – {storeName}
-          </h2>
-          <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
-            ניתן להזמין בטופס הבא ציוד מ־{storeName}. הוא יקבל התראה ויצטרך לאשר ידנית.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+  const formContent = (
+    <form onSubmit={handleSubmit} className={variant === "inline" ? "space-y-5" : "p-6 space-y-5"}>
           {error && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
               {error}
@@ -368,6 +349,35 @@ export function PublicOpenRequestForm({
             שלח בקשה
           </Button>
         </form>
+  );
+
+  if (variant === "inline") {
+    return formContent;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-full gap-2" variant="outline" size="lg">
+          <Send className="w-5 h-5" />
+          שלח בקשה
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        <div className="pt-8 pb-6 px-6 text-center border-b border-slate-100">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+              <Package className="w-9 h-9 text-slate-500" />
+            </div>
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900">
+            בקשה חדשה – {storeName}
+          </h2>
+          <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
+            ניתן להזמין בטופס הבא ציוד מ־{storeName}. הוא יקבל התראה ויצטרך לאשר ידנית.
+          </p>
+        </div>
+        {formContent}
       </DialogContent>
     </Dialog>
   );

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { PublicOpenRequestForm } from "./public-open-request-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, ShoppingCart, Plus, Minus, Send, User, Phone, MessageCircle } from "lucide-react";
 
@@ -140,16 +140,25 @@ export function PublicStore({
 
         {/* סקשנים מתחת להדר */}
         <div className="pt-4 px-3 space-y-4">
-          {/* בקשה חדשה - אם מוגדר */}
+          {/* בקשה חדשה - אם מוגדר (כמו החנות, בעמוד הפרופיל) */}
           {showOpenRequestButton && (
             <Card className="border-slate-200 shadow">
-              <CardContent className="pt-4">
-                <Link href={`/profile/${handoverPhone}/open-request`}>
-                  <Button className="w-full gap-2" size="lg">
-                    <Send className="w-5 h-5" />
-                    בקשה חדשה
-                  </Button>
-                </Link>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Send className="w-5 h-5" />
+                  בקשה חדשה
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-slate-500">
+                  ניתן להזמין ציוד מ־{profile.name}. הוא יקבל התראה ויצטרך לאשר ידנית.
+                </p>
+                <PublicOpenRequestForm
+                  departmentId={department.id}
+                  handoverPhone={handoverPhone}
+                  storeName={storeName}
+                  variant="inline"
+                />
               </CardContent>
             </Card>
           )}
