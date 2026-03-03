@@ -102,14 +102,70 @@ html {
   }
 }
 
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-out-to-end {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slide-in-from-end {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* לתפריט בצד שמאל (RTL) - נכנס מהשמאל */
+@keyframes slide-in-from-end-rtl {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-out-to-end-rtl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
 .animate-in {
   animation-duration: 200ms;
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   animation-fill-mode: forwards;
 }
 
+.animate-out {
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  animation-fill-mode: forwards;
+}
+
 .fade-in-0 {
   animation-name: fade-in;
+}
+
+.fade-out-0 {
+  animation-name: fade-out;
 }
 
 .zoom-in-95 {
@@ -122,6 +178,22 @@ html {
 
 .slide-in-from-right-5 {
   animation-name: slide-in-from-right;
+}
+
+.slide-in-from-end {
+  animation-name: slide-in-from-end;
+}
+
+.slide-out-to-end {
+  animation-name: slide-out-to-end;
+}
+
+.slide-in-from-end-rtl {
+  animation-name: slide-in-from-end-rtl;
+}
+
+.slide-out-to-end-rtl {
+  animation-name: slide-out-to-end-rtl;
 }
 
 /* Focus ring utilities */

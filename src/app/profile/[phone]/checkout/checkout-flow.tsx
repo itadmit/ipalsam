@@ -13,7 +13,7 @@ import {
   searchSoldiersByPhone,
 } from "@/actions/soldier-request";
 import Link from "next/link";
-import { User, Package, ArrowRight } from "lucide-react";
+import { User, Package } from "lucide-react";
 
 interface CheckoutFlowProps {
   handoverPhone: string;
@@ -57,7 +57,7 @@ export function CheckoutFlow({
   useEffect(() => {
     const cartStr = typeof window !== "undefined" ? sessionStorage.getItem("request-cart") : null;
     if (!cartStr) {
-      router.replace(`/request/${handoverPhone}`);
+      router.replace(`/profile/${handoverPhone}`);
       return;
     }
     try {
@@ -71,7 +71,7 @@ export function CheckoutFlow({
         }))
       );
     } catch {
-      router.replace(`/request/${handoverPhone}`);
+      router.replace(`/profile/${handoverPhone}`);
     }
   }, [handoverPhone, router]);
 
@@ -240,18 +240,10 @@ export function CheckoutFlow({
     .filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/30 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+    <div className="w-full max-w-lg mx-auto p-4 pt-6">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-slate-900">צ׳ק אוט – {storeName}</h1>
           <p className="text-slate-500 mt-1">{department.name}</p>
-          <Link
-            href={`/request/${handoverPhone}`}
-            className="text-sm text-emerald-600 hover:underline inline-flex items-center gap-1 mt-2"
-          >
-            <ArrowRight className="w-4 h-4" />
-            חזרה לחנות
-          </Link>
         </div>
 
         <Card className="border-slate-200 shadow-xl">
@@ -355,7 +347,6 @@ export function CheckoutFlow({
             </form>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

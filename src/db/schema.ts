@@ -125,6 +125,9 @@ export const users = pgTable("users", {
   departmentId: uuid("department_id").references(() => departments.id),
   baseId: uuid("base_id").references(() => bases.id),
   barcode: text("barcode").unique(), // ברקוד לזיהוי חייל בהשאלה מהירה
+  avatarUrl: text("avatar_url"), // תמונת פרופיל (base64 או URL)
+  coverUrl: text("cover_url"), // תמונת כיסוי
+  bio: text("bio"), // ביו/תיאור
   isActive: boolean("is_active").default(true).notNull(),
   mustChangePassword: boolean("must_change_password").default(true).notNull(),
   lastLogin: timestamp("last_login"),
@@ -330,6 +333,20 @@ export const openRequestItems = pgTable("open_request_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// התראות
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  type: text("type").notNull(), // "new_open_request" | "request_approved" | "request_rejected"
+  title: text("title").notNull(),
+  body: text("body"),
+  readAt: timestamp("read_at"),
+  metadata: json("metadata"), // { openRequestId, openRequestItemId, etc. }
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Audit Log
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -420,6 +437,14 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   soldierDepartments: many(soldierDepartments),
   auditLogs: many(auditLogs),
   openRequests: many(openRequests),
+  notifications: many(notifications),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
 }));
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({

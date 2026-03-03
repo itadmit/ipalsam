@@ -22,6 +22,7 @@ import {
   Database,
   History,
   Calendar,
+  UserCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
@@ -215,6 +216,12 @@ export function Sidebar({ user, pendingOpenRequests = 0 }: SidebarProps) {
       label: "בקשות פתוחות",
       icon: ClipboardList,
       show: canAccessAdmin || isDeptCommander,
+    },
+    {
+      href: "/dashboard/profile",
+      label: "פרופיל שלי",
+      icon: UserCircle,
+      show: true,
     },
     {
       href: "/dashboard/schedule",

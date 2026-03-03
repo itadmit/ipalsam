@@ -40,7 +40,7 @@ export async function getPublicStoreData(handoverPhone: string) {
 
   const allDeptCommanders = await db.query.users.findMany({
     where: eq(users.role, "dept_commander"),
-    columns: { id: true, phone: true, firstName: true, lastName: true, departmentId: true },
+    columns: { id: true, phone: true, firstName: true, lastName: true, departmentId: true, role: true, avatarUrl: true, coverUrl: true, bio: true },
   });
   const handoverUser = allDeptCommanders.find((u) => {
     const p = (u.phone || "").replace(/\D/g, "").slice(-10);
@@ -96,12 +96,24 @@ export async function getPublicStoreData(handoverPhone: string) {
     });
   }
 
+  const storeName = `${handoverUser.firstName || ""} ${handoverUser.lastName || ""}`.trim() || "החנות";
+  const rawPhone = handoverUser.phone || "";
+  const formattedPhone = rawPhone.length >= 9 ? rawPhone.replace(/(\d{3})(\d{3})(\d{2,4})/, "$1-$2-$3") : phoneDigits;
+
   return {
-    storeName: `${handoverUser.firstName || ""} ${handoverUser.lastName || ""}`.trim() || "החנות",
+    storeName,
     department: { id: dept.id, name: dept.name },
     items: itemsWithStock,
     handoverPhone: phoneDigits,
     showOpenRequestButton: showOpenRequestButton || itemsWithStock.length === 0,
+    profile: {
+      name: storeName,
+      role: handoverUser.role === "dept_commander" ? "מפקד מחלקה" : "מפקד מפקדה",
+      phone: formattedPhone,
+      avatarUrl: handoverUser.avatarUrl || null,
+      coverUrl: handoverUser.coverUrl || null,
+      bio: handoverUser.bio || null,
+    },
   };
 }
 
@@ -119,7 +131,7 @@ export async function getOpenRequestPageData(handoverPhone: string) {
   const phoneDigits = data.handoverPhone;
   const allDeptCommanders = await db.query.users.findMany({
     where: eq(users.role, "dept_commander"),
-    columns: { id: true, phone: true, firstName: true, lastName: true, departmentId: true, role: true },
+    columns: { id: true, phone: true, firstName: true, lastName: true, departmentId: true, role: true, avatarUrl: true, coverUrl: true, bio: true },
   });
   const handoverUser = allDeptCommanders.find((u) => {
     const p = (u.phone || "").replace(/\D/g, "").slice(-10);
@@ -138,6 +150,9 @@ export async function getOpenRequestPageData(handoverPhone: string) {
       name: data.storeName,
       role: roleLabels[handoverUser?.role || "dept_commander"] || "מפקד מחלקה",
       phone: formattedPhone,
+      avatarUrl: handoverUser?.avatarUrl || null,
+      coverUrl: handoverUser?.coverUrl || null,
+      bio: handoverUser?.bio || null,
     },
   };
 }

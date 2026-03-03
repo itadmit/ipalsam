@@ -29,7 +29,7 @@ export function RequestEntryContent() {
       if ("error" in result) {
         setError(result.error || "שגיאה");
       } else {
-        router.push(`/request/${result.phoneDigits}`);
+        router.push(`/profile/${result.phoneDigits}`);
       }
     } catch {
       setError("אירעה שגיאה");
@@ -47,7 +47,7 @@ export function RequestEntryContent() {
       if ("error" in result) {
         setError(result.error || "שגיאה");
       } else {
-        router.push(`/request/${result.phoneDigits}`);
+        router.push(`/profile/${result.phoneDigits}`);
       }
     } catch {
       setError("אירעה שגיאה");

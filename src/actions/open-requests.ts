@@ -10,6 +10,7 @@ import {
   departments,
   auditLogs,
   users,
+  notifications,
 } from "@/db/schema";
 import { eq, and, inArray, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -81,6 +82,35 @@ export async function createOpenRequest(
     newValues: { departmentId, itemsCount: validItems.length, source: options?.source },
   });
 
+  // התראה למפקדי מחלקה ומוסרי ציוד
+  const handoverUsers = await db.query.handoverDepartments.findMany({
+    where: eq(handoverDepartments.departmentId, departmentId),
+    columns: { userId: true },
+  });
+  const deptCommanders = await db.query.users.findMany({
+    where: eq(users.departmentId, departmentId),
+    columns: { id: true },
+  });
+  const dept = await db.query.departments.findFirst({
+    where: eq(departments.id, departmentId),
+    columns: { name: true },
+  });
+  const notifyUserIds = [...new Set([
+    ...handoverUsers.map((h) => h.userId),
+    ...deptCommanders.map((u) => u.id),
+  ].filter(Boolean))];
+  if (notifyUserIds.length > 0) {
+    await db.insert(notifications).values(
+      notifyUserIds.map((userId) => ({
+        userId,
+        type: "new_open_request",
+        title: "בקשה פתוחה חדשה",
+        body: `בקשה חדשה למחלקת ${dept?.name || "לוגיסטיקה"}`,
+        metadata: { openRequestId: newRequest.id },
+      }))
+    );
+  }
+
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/open-requests");
   return { success: true, id: newRequest.id };
@@ -138,6 +168,19 @@ export async function createOpenRequestFromPublicStore(
     }))
   );
 
+  // התראה למוסר הציוד
+  const dept = await db.query.departments.findFirst({
+    where: eq(departments.id, departmentId),
+    columns: { name: true },
+  });
+  await db.insert(notifications).values({
+    userId: match.id,
+    type: "new_open_request",
+    title: "בקשה פתוחה חדשה",
+    body: `בקשה חדשה למחלקת ${dept?.name || "לוגיסטיקה"}`,
+    metadata: { openRequestId: newRequest.id },
+  });
+
   revalidatePath("/dashboard/open-requests");
   return { success: true, id: newRequest.id };
 }
@@ -173,6 +216,18 @@ export async function approveOpenRequestItem(itemId: string) {
       approvedAt: new Date(),
     })
     .where(eq(openRequestItems.id, itemId));
+
+  // התראה למבקש
+  const requesterId = item.openRequest.requesterId;
+  if (requesterId) {
+    await db.insert(notifications).values({
+      userId: requesterId,
+      type: "request_approved",
+      title: "הבקשה אושרה",
+      body: `הפריט "${item.itemName}" אושר`,
+      metadata: { openRequestId: item.openRequest.id, openRequestItemId: itemId },
+    });
+  }
 
   await db.insert(auditLogs).values({
     userId: session.user.id,
@@ -218,6 +273,18 @@ export async function rejectOpenRequestItem(itemId: string, reason?: string) {
       rejectionReason: reason || null,
     })
     .where(eq(openRequestItems.id, itemId));
+
+  // התראה למבקש
+  const requesterId = item.openRequest.requesterId;
+  if (requesterId) {
+    await db.insert(notifications).values({
+      userId: requesterId,
+      type: "request_rejected",
+      title: "הבקשה נדחתה",
+      body: reason ? `הפריט "${item.itemName}" נדחה: ${reason}` : `הפריט "${item.itemName}" נדחה`,
+      metadata: { openRequestId: item.openRequest.id, openRequestItemId: itemId },
+    });
+  }
 
   await db.insert(auditLogs).values({
     userId: session.user.id,
