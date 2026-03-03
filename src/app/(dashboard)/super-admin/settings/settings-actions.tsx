@@ -172,8 +172,8 @@ export function NotificationSettingsForm({
         </div>
         <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
           <div>
-            <p className="font-medium">התראות השאלות חדשות</p>
-            <p className="text-sm text-slate-500">שלח התראה למפקד מחלקה על השאלה חדשה</p>
+            <p className="font-medium">מיילים על בקשה חדשה</p>
+            <p className="text-sm text-slate-500">שלח מייל למבקש (אישור הגשה) ולמפקדי מחלקה (התראה על בקשה חדשה)</p>
           </div>
           <input
             type="checkbox"

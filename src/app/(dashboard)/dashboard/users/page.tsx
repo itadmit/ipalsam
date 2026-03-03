@@ -16,7 +16,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Users, Edit } from "lucide-react";
+import { Plus, Users, Edit, UserCircle } from "lucide-react";
 import { getRoleLabel, formatPhone } from "@/lib/utils";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -27,7 +27,7 @@ interface SearchParams {
   role?: string;
 }
 
-async function UsersTable({ searchParams, currentUser }: { searchParams: SearchParams; currentUser: SessionUser }) {
+async function UsersTable({ searchParams, currentUser, canManage }: { searchParams: SearchParams; currentUser: SessionUser; canManage: boolean }) {
   let allUsers = await db.query.users.findMany({
     with: {
       department: true,
@@ -100,7 +100,12 @@ async function UsersTable({ searchParams, currentUser }: { searchParams: SearchP
                       {user.firstName[0]}{user.lastName[0]}
                     </span>
                   </div>
-                  <span className="font-medium">{user.firstName} {user.lastName}</span>
+                  <Link
+                    href={`/profile/${(user.phone || "").replace(/\D/g, "").slice(-10) || user.phone}`}
+                    className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    {user.firstName} {user.lastName}
+                  </Link>
                 </div>
               </TableCell>
               <TableCell dir="ltr" className="text-left">{formatPhone(user.phone)}</TableCell>
@@ -117,11 +122,20 @@ async function UsersTable({ searchParams, currentUser }: { searchParams: SearchP
                 </Badge>
               </TableCell>
               <TableCell>
-                <Link href={`/super-admin/users/${user.id}`}>
-                  <Button variant="ghost" size="icon">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-1">
+                  <Link href={`/profile/${(user.phone || "").replace(/\D/g, "").slice(-10) || user.phone}`} title="פרופיל / חנות">
+                    <Button variant="ghost" size="icon">
+                      <UserCircle className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                  {canManage && (
+                    <Link href={`/super-admin/users/${user.id}`} title="עריכה">
+                      <Button variant="ghost" size="icon">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
@@ -180,7 +194,7 @@ export default async function UsersPage({
               </div>
             }
           >
-            <UsersTable searchParams={params} currentUser={session.user as SessionUser} />
+            <UsersTable searchParams={params} currentUser={session.user as SessionUser} canManage={canManage} />
           </Suspense>
         </CardContent>
       </Card>

@@ -65,7 +65,6 @@ export function RequestStatusChange({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [approveNotes, setApproveNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
-  const [rejectNotes, setRejectNotes] = useState("");
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const statusOptions = getAllStatusOptions(status);
@@ -161,12 +160,11 @@ export function RequestStatusChange({
     try {
       const result =
         requestGroupId && groupRequestIds.length > 1
-          ? await rejectGroup(requestGroupId, rejectionReason, rejectNotes.trim() || undefined)
-          : await rejectRequest(requestId, rejectionReason, rejectNotes.trim() || undefined);
+          ? await rejectGroup(requestGroupId, rejectionReason)
+          : await rejectRequest(requestId, rejectionReason);
       if (result.success) {
         setShowRejectDialog(false);
         setRejectionReason("");
-        setRejectNotes("");
         setPendingStatus(null);
         setExpanded(false);
         router.refresh();
@@ -237,9 +235,10 @@ export function RequestStatusChange({
             <DialogTitle className="text-emerald-700">אישור השאלה</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
+            <p className="text-slate-600">האם אתה בטוח שברצונך לאשר בקשה זו?</p>
             <Input
               id="approve-notes"
-              label="הערות (יישלחו במייל למבקש)"
+              label="הערה (יישלח במייל למבקש)"
               value={approveNotes}
               onChange={(e) => setApproveNotes(e.target.value)}
               placeholder="אופציונלי – למשל: ניתן לאסוף מחר"
@@ -250,7 +249,7 @@ export function RequestStatusChange({
               ביטול
             </Button>
             <Button onClick={handleApprove} loading={loading}>
-              אשר השאלה
+              שלח
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -262,20 +261,14 @@ export function RequestStatusChange({
             <DialogTitle className="text-red-600">דחיית השאלה</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
+            <p className="text-slate-600">האם אתה בטוח שברצונך לדחות בקשה זו?</p>
             <Input
               id="reason"
-              label="סיבת הדחייה"
+              label="סיבת הדחייה (חובה – יישלח במייל למבקש)"
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="למשל: אין מלאי זמין"
               required
-            />
-            <Input
-              id="reject-notes"
-              label="הערות נוספות (יישלחו במייל למבקש)"
-              value={rejectNotes}
-              onChange={(e) => setRejectNotes(e.target.value)}
-              placeholder="אופציונלי"
             />
           </div>
           <DialogFooter>
@@ -288,7 +281,7 @@ export function RequestStatusChange({
               loading={loading}
               disabled={!rejectionReason.trim()}
             >
-              דחה השאלה
+              שלח
             </Button>
           </DialogFooter>
         </DialogContent>

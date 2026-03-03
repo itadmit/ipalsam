@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Package, User, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, ChevronLeft, ChevronRight } from "lucide-react";
 import { getStatusColor, getStatusLabel, formatDateTime } from "@/lib/utils";
 
 interface RequestListProps {
@@ -17,13 +18,25 @@ interface RequestListProps {
     status: string;
     createdAt: Date;
   }[];
+  totalPages?: number;
+  currentPage?: number;
+  totalCount?: number;
+  pageSize?: number;
 }
 
-export function RequestList({ groups }: RequestListProps) {
+export function RequestList({ groups, totalPages = 1, currentPage = 1, totalCount = 0, pageSize = 15 }: RequestListProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const goToPage = (page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(page));
+    router.replace(`${pathname}?${params.toString()}`);
+  };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {groups.map(({ groupKey, firstId, recipientName, recipientPhone, reqs, departmentName, urgency, status, createdAt }) => (
         <button
           key={groupKey}
@@ -57,6 +70,34 @@ export function RequestList({ groups }: RequestListProps) {
           </div>
         </button>
       ))}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+          <p className="text-sm text-slate-500">
+            מציג {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalCount)} מתוך {totalCount}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+            >
+              <ChevronRight className="w-4 h-4" />
+              הקודם
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+            >
+              הבא
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -57,7 +57,7 @@ export default async function OpenRequestsPage() {
     );
   }
 
-  const allRequests = await db.query.openRequests.findMany({
+  const allRequestsRaw = await db.query.openRequests.findMany({
     where: inArray(openRequests.departmentId, departmentIds),
     orderBy: [desc(openRequests.createdAt)],
     with: {
@@ -67,6 +67,18 @@ export default async function OpenRequestsPage() {
         orderBy: (items, { asc }) => [asc(items.createdAt)],
       },
     },
+  });
+
+  // הפרדה מלאה: בקשות מ-public_store – רק בעל החנות רואה. בקשות מ-dashboard – לפי מחלקה.
+  const allRequests = allRequestsRaw.filter((r) => {
+    if (r.source === "public_store") {
+      if (r.handoverUserId) {
+        return r.handoverUserId === userId || isSuperAdmin || isHQ;
+      }
+      // בקשות ישנות ללא handoverUserId – לפי מחלקה (התנהגות ישנה)
+      return true;
+    }
+    return true;
   });
 
   const pendingRequests = allRequests.filter((r) =>

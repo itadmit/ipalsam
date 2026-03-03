@@ -314,6 +314,7 @@ export const openRequests = pgTable("open_requests", {
   departmentId: uuid("department_id")
     .references(() => departments.id, { onDelete: "cascade" })
     .notNull(),
+  handoverUserId: uuid("handover_user_id").references(() => users.id, { onDelete: "set null" }), // בעל החנות – רק הוא רואה בקשה מ-public_store
   signature: text("signature"), // חתימה דיגיטלית (data URL)
   source: text("source"), // "dashboard" | "public_store"
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -458,6 +459,10 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
 export const openRequestsRelations = relations(openRequests, ({ one, many }) => ({
   requester: one(users, {
     fields: [openRequests.requesterId],
+    references: [users.id],
+  }),
+  handoverUser: one(users, {
+    fields: [openRequests.handoverUserId],
     references: [users.id],
   }),
   department: one(departments, {

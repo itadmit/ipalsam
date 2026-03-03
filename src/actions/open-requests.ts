@@ -156,6 +156,7 @@ export async function createOpenRequestFromPublicStore(
     .values({
       requesterId,
       departmentId,
+      handoverUserId: match.id,
       source: "public_store",
     })
     .returning();
@@ -171,20 +172,12 @@ export async function createOpenRequestFromPublicStore(
     }))
   );
 
-  // התראה למוסר הציוד
+  // התראה רק לבעל החנות (הפרדה מלאה)
   const dept = await db.query.departments.findFirst({
     where: eq(departments.id, departmentId),
     columns: { name: true },
   });
-  const handoverUsers = await db.query.handoverDepartments.findMany({
-    where: eq(handoverDepartments.departmentId, departmentId),
-    columns: { userId: true },
-  });
-  const deptCommanders = await db.query.users.findMany({
-    where: eq(users.departmentId, departmentId),
-    columns: { id: true },
-  });
-  const notifyUserIds = [...new Set([match.id, ...handoverUsers.map((h) => h.userId), ...deptCommanders.map((u) => u.id)])];
+  const notifyUserIds = [match.id];
 
   await db.insert(notifications).values(
     notifyUserIds.map((userId) => ({
@@ -196,7 +189,7 @@ export async function createOpenRequestFromPublicStore(
     }))
   );
 
-  sendNewOpenRequestEmails(newRequest.id, requesterId, notifyUserIds).catch(() => {});
+  sendNewOpenRequestEmails(newRequest.id, requesterId, notifyUserIds).catch(() => {}); // מייל רק לבעל החנות
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/open-requests");
@@ -215,14 +208,22 @@ export async function approveOpenRequestItem(itemId: string) {
   if (!item || item.status !== "pending") return { error: "פריט לא נמצא או כבר טופל" };
 
   const deptId = item.openRequest.departmentId;
-  const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
-  const handover = await db.query.handoverDepartments.findFirst({
-    where: and(
-      eq(handoverDepartments.userId, session.user.id),
-      eq(handoverDepartments.departmentId, deptId)
-    ),
-  });
-  const canApprove = session.user.role === "super_admin" || session.user.role === "hq_commander" || isDeptCommander || handover;
+  const handoverUserId = item.openRequest.handoverUserId;
+  const isPublicStore = item.openRequest.source === "public_store";
+
+  let canApprove: boolean;
+  if (isPublicStore && handoverUserId) {
+    canApprove = session.user.role === "super_admin" || session.user.role === "hq_commander" || session.user.id === handoverUserId;
+  } else {
+    const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
+    const handover = await db.query.handoverDepartments.findFirst({
+      where: and(
+        eq(handoverDepartments.userId, session.user.id),
+        eq(handoverDepartments.departmentId, deptId)
+      ),
+    });
+    canApprove = session.user.role === "super_admin" || session.user.role === "hq_commander" || isDeptCommander || !!handover;
+  }
 
   if (!canApprove) return { error: "אין הרשאה לאשר" };
 
@@ -271,14 +272,22 @@ export async function rejectOpenRequestItem(itemId: string, reason?: string) {
   if (!item || item.status !== "pending") return { error: "פריט לא נמצא או כבר טופל" };
 
   const deptId = item.openRequest.departmentId;
-  const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
-  const handover = await db.query.handoverDepartments.findFirst({
-    where: and(
-      eq(handoverDepartments.userId, session.user.id),
-      eq(handoverDepartments.departmentId, deptId)
-    ),
-  });
-  const canReject = session.user.role === "super_admin" || session.user.role === "hq_commander" || isDeptCommander || handover;
+  const handoverUserId = item.openRequest.handoverUserId;
+  const isPublicStore = item.openRequest.source === "public_store";
+
+  let canReject: boolean;
+  if (isPublicStore && handoverUserId) {
+    canReject = session.user.role === "super_admin" || session.user.role === "hq_commander" || session.user.id === handoverUserId;
+  } else {
+    const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
+    const handover = await db.query.handoverDepartments.findFirst({
+      where: and(
+        eq(handoverDepartments.userId, session.user.id),
+        eq(handoverDepartments.departmentId, deptId)
+      ),
+    });
+    canReject = session.user.role === "super_admin" || session.user.role === "hq_commander" || isDeptCommander || !!handover;
+  }
 
   if (!canReject) return { error: "אין הרשאה לדחות" };
 

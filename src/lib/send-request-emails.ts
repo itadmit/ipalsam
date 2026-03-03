@@ -1,10 +1,17 @@
 "use server";
 
 import { db } from "@/db";
-import { requests, users, departments, openRequests } from "@/db/schema";
+import { requests, users, departments, openRequests, systemSettings } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { sendEmail } from "./email";
 import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail } from "./email-templates";
+
+async function isNewRequestEmailsEnabled(): Promise<boolean> {
+  const row = await db.query.systemSettings.findFirst({
+    where: eq(systemSettings.key, "new_request_notifications"),
+  });
+  return row?.value !== "false";
+}
 
 export async function sendNewRequestEmails(
   requestIds: string[],
@@ -12,6 +19,7 @@ export async function sendNewRequestEmails(
   approverUserIds: string[]
 ) {
   if (requestIds.length === 0) return;
+  if (!(await isNewRequestEmailsEnabled())) return;
 
   const reqs = await db.query.requests.findMany({
     where: inArray(requests.id, requestIds),
@@ -97,6 +105,8 @@ export async function sendNewOpenRequestEmails(
   requesterId: string | null,
   approverUserIds: string[]
 ) {
+  if (!(await isNewRequestEmailsEnabled())) return;
+
   const openReq = await db.query.openRequests.findFirst({
     where: eq(openRequests.id, openRequestId),
     with: { items: true, department: { columns: { name: true } } },
