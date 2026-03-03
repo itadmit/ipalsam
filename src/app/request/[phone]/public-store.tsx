@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, ShoppingCart, Plus, Minus } from "lucide-react";
-import { PublicOpenRequestForm } from "./public-open-request-form";
+import { Package, ShoppingCart, Plus, Minus, Send } from "lucide-react";
 
 interface PublicStoreProps {
   storeName: string;
@@ -121,11 +121,12 @@ export function PublicStore({
               )}
             </div>
             {showOpenRequestButton && (
-              <PublicOpenRequestForm
-                departmentId={department.id}
-                handoverPhone={handoverPhone}
-                storeName={storeName}
-              />
+              <Link href={`/request/${handoverPhone}/open-request`}>
+                <Button className="w-full gap-2" variant="outline" size="lg">
+                  <Send className="w-5 h-5" />
+                  שלח בקשה
+                </Button>
+              </Link>
             )}
           </CardContent>
         </Card>

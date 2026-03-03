@@ -147,18 +147,20 @@ export function OpenRequestForm({ departments, trigger }: OpenRequestFormProps) 
             <label className="text-sm font-medium text-slate-700 block mb-2">פריטים</label>
             <div className="space-y-2">
               {rows.map((row) => (
-                <div key={row.id} className="space-y-2 relative">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeRow(row.id)}
-                    disabled={rows.length <= 1}
-                    className="absolute top-0 left-0 shrink-0 text-slate-400 hover:text-red-500 z-10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                  <div className="space-y-2 pl-10">
+                <div key={row.id} className="space-y-2">
+                  <div className="flex justify-start -mb-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeRow(row.id)}
+                      disabled={rows.length <= 1}
+                      className="shrink-0 h-8 w-8 text-slate-400 hover:text-red-500 -ml-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
                     <Input
                       label="שם פריט"
                       placeholder="שם הפריט"

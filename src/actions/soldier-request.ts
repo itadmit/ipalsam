@@ -105,6 +105,43 @@ export async function getPublicStoreData(handoverPhone: string) {
   };
 }
 
+const roleLabels: Record<string, string> = {
+  dept_commander: "מפקד מחלקה",
+  hq_commander: "מפקד מפקדה",
+  super_admin: "מנהל מערכת",
+  soldier: "חייל",
+};
+
+export async function getOpenRequestPageData(handoverPhone: string) {
+  const data = await getPublicStoreData(handoverPhone);
+  if ("error" in data) return data as { error: string };
+
+  const phoneDigits = data.handoverPhone;
+  const allDeptCommanders = await db.query.users.findMany({
+    where: eq(users.role, "dept_commander"),
+    columns: { id: true, phone: true, firstName: true, lastName: true, departmentId: true, role: true },
+  });
+  const handoverUser = allDeptCommanders.find((u) => {
+    const p = (u.phone || "").replace(/\D/g, "").slice(-10);
+    return p === phoneDigits || p.endsWith(phoneDigits) || phoneDigits.endsWith(p);
+  });
+
+  const rawPhone = handoverUser?.phone || "";
+  const formattedPhone =
+    rawPhone.length >= 9
+      ? rawPhone.replace(/(\d{3})(\d{3})(\d{2,4})/, "$1-$2-$3")
+      : phoneDigits;
+
+  return {
+    ...data,
+    profile: {
+      name: data.storeName,
+      role: roleLabels[handoverUser?.role || "dept_commander"] || "מפקד מחלקה",
+      phone: formattedPhone,
+    },
+  };
+}
+
 export async function searchSoldiersByPhone(partialPhone: string) {
   const digits = partialPhone.replace(/\D/g, "");
   if (digits.length < 2) return { matches: [] };

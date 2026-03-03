@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { createOpenRequestFromPublicStore } from "@/actions/open-requests";
 import { identifyOrCreateSoldier, searchSoldiersByPhone } from "@/actions/soldier-request";
 import { Package, Plus, Minus, Trash2, Send, User, Check } from "lucide-react";
 
-interface PublicOpenRequestFormProps {
+interface OpenRequestPageContentProps {
   departmentId: string;
   handoverPhone: string;
   storeName: string;
@@ -25,12 +25,12 @@ function generateId() {
   return `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function PublicOpenRequestForm({
+export function OpenRequestPageContent({
   departmentId,
   handoverPhone,
   storeName,
-}: PublicOpenRequestFormProps) {
-  const [open, setOpen] = useState(false);
+}: OpenRequestPageContentProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -179,8 +179,7 @@ export function PublicOpenRequestForm({
         setSuccess(true);
         setRows([{ id: generateId(), itemName: "", quantity: 1, notes: "" }]);
         setTimeout(() => {
-          setOpen(false);
-          setSuccess(false);
+          router.push(`/request/${handoverPhone}`);
         }, 1500);
       }
     } catch {
@@ -191,29 +190,23 @@ export function PublicOpenRequestForm({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full gap-2" variant="outline" size="lg">
-          <Send className="w-5 h-5" />
-          שלח בקשה
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
-        <div className="pt-8 pb-6 px-6 text-center border-b border-slate-100">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-              <Package className="w-9 h-9 text-slate-500" />
+    <div className="p-4 pb-12">
+      <div className="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-slate-200 flex items-center justify-center">
+              <Package className="w-6 h-6 text-slate-500" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-slate-900">בקשה פתוחה</h2>
+              <p className="text-sm text-slate-500">
+                הזמן ציוד מ{storeName}. יקבל התראה ויוכל לאשר או לדחות.
+              </p>
             </div>
           </div>
-          <h2 className="text-xl font-semibold text-slate-900">
-            בקשה פתוחה – {storeName}
-          </h2>
-          <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
-            הזמן ציוד מהספק. {storeName} יקבל התראה ויוכל לאשר או לדחות כל פריט.
-          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 space-y-5">
           {error && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
               {error}
@@ -345,12 +338,12 @@ export function PublicOpenRequestForm({
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">הערות</label>
                       <textarea
-                    placeholder="הערות"
-                    value={row.notes}
-                    onChange={(e) => updateRow(row.id, "notes", e.target.value)}
-                    rows={3}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-                  />
+                        placeholder="הערות"
+                        value={row.notes}
+                        onChange={(e) => updateRow(row.id, "notes", e.target.value)}
+                        rows={3}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                      />
                     </div>
                   </div>
                 </div>
@@ -372,7 +365,7 @@ export function PublicOpenRequestForm({
             שלח בקשה
           </Button>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
