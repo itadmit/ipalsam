@@ -61,8 +61,12 @@ export function RequestStatusChange({
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [approveNotes, setApproveNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectNotes, setRejectNotes] = useState("");
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const statusOptions = getAllStatusOptions(status);
   const hasOptions = statusOptions.length > 0 && canApprove;
@@ -71,20 +75,21 @@ export function RequestStatusChange({
 
   const handleStatusChange = async (newStatus: string) => {
     if (newStatus === status) return;
+    if (newStatus === "approved") {
+      setPendingStatus("approved");
+      setShowApproveDialog(true);
+      return;
+    }
+    if (newStatus === "rejected") {
+      setPendingStatus("rejected");
+      setShowRejectDialog(true);
+      return;
+    }
     setLoading(true);
     try {
       let result: { success?: boolean; error?: string } = {};
 
-      if (newStatus === "approved") {
-        result =
-          requestGroupId && groupRequestIds.length > 1
-            ? await approveGroup(requestGroupId)
-            : await approveRequest(requestId);
-      } else if (newStatus === "rejected") {
-        setShowRejectDialog(true);
-        setLoading(false);
-        return;
-      } else if (newStatus === "returned") {
+      if (newStatus === "returned") {
         const groupKey = requestGroupId ?? requestId;
         result = await returnGroup(groupKey);
       } else if (newStatus === "closed" || newStatus === "overdue") {
@@ -126,17 +131,43 @@ export function RequestStatusChange({
     }
   };
 
+  const handleApprove = async () => {
+    setLoading(true);
+    try {
+      const result =
+        requestGroupId && groupRequestIds.length > 1
+          ? await approveGroup(requestGroupId, approveNotes.trim() || undefined)
+          : await approveRequest(requestId, approveNotes.trim() || undefined);
+      if (result.success) {
+        setShowApproveDialog(false);
+        setApproveNotes("");
+        setPendingStatus(null);
+        setExpanded(false);
+        router.refresh();
+      } else if (result.error) {
+        alert(result.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("אירעה שגיאה");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleReject = async () => {
     if (!rejectionReason.trim()) return;
     setLoading(true);
     try {
       const result =
         requestGroupId && groupRequestIds.length > 1
-          ? await rejectGroup(requestGroupId, rejectionReason)
-          : await rejectRequest(requestId, rejectionReason);
+          ? await rejectGroup(requestGroupId, rejectionReason, rejectNotes.trim() || undefined)
+          : await rejectRequest(requestId, rejectionReason, rejectNotes.trim() || undefined);
       if (result.success) {
         setShowRejectDialog(false);
         setRejectionReason("");
+        setRejectNotes("");
+        setPendingStatus(null);
         setExpanded(false);
         router.refresh();
       } else if (result.error) {
@@ -200,12 +231,37 @@ export function RequestStatusChange({
         )}
       </div>
 
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+      <Dialog open={showApproveDialog} onOpenChange={(open) => { setShowApproveDialog(open); if (!open) setPendingStatus(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-emerald-700">אישור השאלה</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <Input
+              id="approve-notes"
+              label="הערות (יישלחו במייל למבקש)"
+              value={approveNotes}
+              onChange={(e) => setApproveNotes(e.target.value)}
+              placeholder="אופציונלי – למשל: ניתן לאסוף מחר"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
+              ביטול
+            </Button>
+            <Button onClick={handleApprove} loading={loading}>
+              אשר השאלה
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRejectDialog} onOpenChange={(open) => { setShowRejectDialog(open); if (!open) setPendingStatus(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-red-600">דחיית השאלה</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             <Input
               id="reason"
               label="סיבת הדחייה"
@@ -213,6 +269,13 @@ export function RequestStatusChange({
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="למשל: אין מלאי זמין"
               required
+            />
+            <Input
+              id="reject-notes"
+              label="הערות נוספות (יישלחו במייל למבקש)"
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              placeholder="אופציונלי"
             />
           </div>
           <DialogFooter>

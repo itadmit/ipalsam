@@ -126,10 +126,8 @@ export function OpenRequestPageContent({
       let requesterId: string | null = null;
 
       const identifyFirst = await identifyOrCreateSoldier(phone);
-      if ("token" in identifyFirst && identifyFirst.token) {
-        const { verifyRequestToken } = await import("@/lib/request-token");
-        const verified = verifyRequestToken(identifyFirst.token);
-        if (verified) requesterId = verified.userId;
+      if ("userId" in identifyFirst && identifyFirst.userId) {
+        requesterId = identifyFirst.userId;
         if (identifyFirst.soldierName) setFullName(identifyFirst.soldierName);
       } else if ("needCreate" in identifyFirst && fullName.trim()) {
         const nameParts = fullName.trim().split(/\s+/);
@@ -145,10 +143,8 @@ export function OpenRequestPageContent({
           setLoading(false);
           return;
         }
-        if ("token" in result && result.token) {
-          const { verifyRequestToken } = await import("@/lib/request-token");
-          const verified = verifyRequestToken(result.token);
-          if (verified) requesterId = verified.userId;
+        if ("userId" in result && result.userId) {
+          requesterId = result.userId;
         }
       } else if ("error" in identifyFirst) {
         setError(identifyFirst.error || "");

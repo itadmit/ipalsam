@@ -237,7 +237,7 @@ export async function identifyOrCreateSoldier(
 
   if (requester?.isActive) {
     const token = createRequestToken(requester.id);
-    return { token, soldierName: `${requester.firstName} ${requester.lastName}` };
+    return { token, soldierName: `${requester.firstName} ${requester.lastName}`, userId: requester.id };
   }
 
   if (requester && !requester.isActive) {
@@ -263,6 +263,7 @@ export async function identifyOrCreateSoldier(
         return {
           token,
           soldierName: `${existingByPhone.firstName || ""} ${existingByPhone.lastName || ""}`.trim(),
+          userId: existingByPhone.id,
         };
       }
       return { error: "מספר טלפון זה כבר רשום במערכת" };
@@ -287,7 +288,7 @@ export async function identifyOrCreateSoldier(
       });
     }
     const token = createRequestToken(newUser.id);
-    return { token, soldierName: `${options.firstName} ${options.lastName}` };
+    return { token, soldierName: `${options.firstName} ${options.lastName}`, userId: newUser.id };
   }
 
   return { needCreate: true as const };

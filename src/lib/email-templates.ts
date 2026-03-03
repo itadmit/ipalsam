@@ -132,3 +132,97 @@ export function newOpenRequestEmail(options: {
 
   return baseTemplate(bodyContent);
 }
+
+export function requestApprovedEmail(options: {
+  recipientName: string;
+  departmentName: string;
+  items: { name: string; quantity: number; notes?: string | null }[];
+  approverNotes?: string | null;
+}) {
+  const { recipientName, departmentName, items, approverNotes } = options;
+
+  const itemsRows = items
+    .map(
+      (i) =>
+        `<tr>
+          <td style="${STYLES.td}">${i.name}</td>
+          <td style="${STYLES.td}">${i.quantity}</td>
+          <td style="${STYLES.td}">${i.notes?.trim() || "-"}</td>
+        </tr>`
+    )
+    .join("");
+
+  const bodyContent = `
+    <div dir="rtl" style="${STYLES.body}">
+      <p style="${STYLES.title}">שלום ${recipientName},</p>
+      <p style="${STYLES.text}">
+        הבקשה שלך להשאלת ציוד <strong>אושרה</strong>.
+      </p>
+      <p style="${STYLES.text}">מחלקה: <strong>${departmentName}</strong></p>
+      <table dir="rtl" style="${STYLES.table}">
+        <thead>
+          <tr>
+            <th style="${STYLES.th}">פריט</th>
+            <th style="${STYLES.th}">כמות</th>
+            <th style="${STYLES.th}">הערות</th>
+          </tr>
+        </thead>
+        <tbody>${itemsRows}</tbody>
+      </table>
+      ${approverNotes?.trim() ? `<p style="${STYLES.text}"><strong>הערות מהמאשר:</strong> ${approverNotes.trim()}</p>` : ""}
+      <p style="${STYLES.text}">ניתן לאסוף את הציוד בהתאם להנחיות המחלקה.</p>
+    </div>
+    <div dir="rtl" style="${STYLES.footer}">
+      iPalsam – ניהול ציוד בבסיס צבאי
+    </div>`;
+
+  return baseTemplate(bodyContent);
+}
+
+export function requestRejectedEmail(options: {
+  recipientName: string;
+  departmentName: string;
+  items: { name: string; quantity: number; notes?: string | null }[];
+  rejectionReason: string;
+  approverNotes?: string | null;
+}) {
+  const { recipientName, departmentName, items, rejectionReason, approverNotes } = options;
+
+  const itemsRows = items
+    .map(
+      (i) =>
+        `<tr>
+          <td style="${STYLES.td}">${i.name}</td>
+          <td style="${STYLES.td}">${i.quantity}</td>
+          <td style="${STYLES.td}">${i.notes?.trim() || "-"}</td>
+        </tr>`
+    )
+    .join("");
+
+  const bodyContent = `
+    <div dir="rtl" style="${STYLES.body}">
+      <p style="${STYLES.title}">שלום ${recipientName},</p>
+      <p style="${STYLES.text}">
+        הבקשה שלך להשאלת ציוד <strong>נדחתה</strong>.
+      </p>
+      <p style="${STYLES.text}">מחלקה: <strong>${departmentName}</strong></p>
+      <table dir="rtl" style="${STYLES.table}">
+        <thead>
+          <tr>
+            <th style="${STYLES.th}">פריט</th>
+            <th style="${STYLES.th}">כמות</th>
+            <th style="${STYLES.th}">הערות</th>
+          </tr>
+        </thead>
+        <tbody>${itemsRows}</tbody>
+      </table>
+      <p style="${STYLES.text}"><strong>סיבת הדחייה:</strong> ${rejectionReason.trim()}</p>
+      ${approverNotes?.trim() ? `<p style="${STYLES.text}"><strong>הערות נוספות:</strong> ${approverNotes.trim()}</p>` : ""}
+      <p style="${STYLES.text}">ניתן לפנות למחלקה לפרטים נוספים.</p>
+    </div>
+    <div dir="rtl" style="${STYLES.footer}">
+      iPalsam – ניהול ציוד בבסיס צבאי
+    </div>`;
+
+  return baseTemplate(bodyContent);
+}

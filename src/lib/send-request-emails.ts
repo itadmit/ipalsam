@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { requests, users, departments, openRequests } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { sendEmail } from "./email";
-import { newRequestEmail, newOpenRequestEmail } from "./email-templates";
+import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail } from "./email-templates";
 
 export async function sendNewRequestEmails(
   requestIds: string[],
@@ -150,4 +150,98 @@ export async function sendNewOpenRequestEmails(
       html,
     });
   }
+}
+
+export async function sendRequestApprovedEmail(
+  requestIds: string[],
+  approverNotes?: string | null
+) {
+  if (requestIds.length === 0) return;
+
+  const reqs = await db.query.requests.findMany({
+    where: inArray(requests.id, requestIds),
+    with: {
+      requester: { columns: { id: true, email: true, firstName: true, lastName: true } },
+      itemType: { columns: { name: true } },
+      department: { columns: { name: true } },
+    },
+  });
+
+  const requester = reqs[0]?.requester;
+  if (!requester?.email) return;
+
+  const itemsMap = new Map<string, { name: string; quantity: number; notes?: string | null }>();
+  for (const r of reqs) {
+    if (!r.itemType || !r.department) continue;
+    const key = r.itemType.name;
+    const existing = itemsMap.get(key);
+    if (existing) {
+      existing.quantity += r.quantity;
+      if (r.notes?.trim() && !existing.notes) existing.notes = r.notes;
+    } else {
+      itemsMap.set(key, { name: r.itemType.name, quantity: r.quantity, notes: r.notes });
+    }
+  }
+  const items = Array.from(itemsMap.values());
+  const departmentName = reqs[0]?.department?.name || "לוגיסטיקה";
+
+  const html = requestApprovedEmail({
+    recipientName: `${requester.firstName} ${requester.lastName}`.trim(),
+    departmentName,
+    items,
+    approverNotes,
+  });
+  await sendEmail({
+    to: requester.email,
+    subject: "הבקשה שלך אושרה – iPalsam",
+    html,
+  });
+}
+
+export async function sendRequestRejectedEmail(
+  requestIds: string[],
+  rejectionReason: string,
+  approverNotes?: string | null
+) {
+  if (requestIds.length === 0) return;
+
+  const reqs = await db.query.requests.findMany({
+    where: inArray(requests.id, requestIds),
+    with: {
+      requester: { columns: { id: true, email: true, firstName: true, lastName: true } },
+      itemType: { columns: { name: true } },
+      department: { columns: { name: true } },
+    },
+  });
+
+  const requester = reqs[0]?.requester;
+  if (!requester?.email) return;
+
+  const itemsMap = new Map<string, { name: string; quantity: number; notes?: string | null }>();
+  for (const r of reqs) {
+    if (!r.itemType || !r.department) continue;
+    const key = r.itemType.name;
+    const existing = itemsMap.get(key);
+    if (existing) {
+      existing.quantity += r.quantity;
+      if (r.notes?.trim() && !existing.notes) existing.notes = r.notes;
+    } else {
+      itemsMap.set(key, { name: r.itemType.name, quantity: r.quantity, notes: r.notes });
+    }
+  }
+  const items = Array.from(itemsMap.values());
+  const departmentName = reqs[0]?.department?.name || "לוגיסטיקה";
+
+  const html = requestRejectedEmail({
+    recipientName: `${requester.firstName} ${requester.lastName}`.trim(),
+    departmentName,
+    items,
+    rejectionReason,
+    approverNotes,
+  });
+  await sendEmail({
+    to: requester.email,
+    subject: "הבקשה שלך נדחתה – iPalsam",
+    html,
+  });
 }

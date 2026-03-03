@@ -12,7 +12,7 @@ import {
   handoverDepartments,
 } from "@/db/schema";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { sendNewRequestEmails } from "@/lib/send-request-emails";
+import { sendNewRequestEmails, sendRequestApprovedEmail, sendRequestRejectedEmail } from "@/lib/send-request-emails";
 import { auth, canManageDepartment } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { CreateRequestFormData, SessionUser } from "@/types";
@@ -378,6 +378,8 @@ export async function approveRequest(requestId: string, notes?: string) {
     await executeHandover(requestId, session.user.id);
   }
 
+  sendRequestApprovedEmail([requestId], notes).catch(() => {});
+
   revalidatePath("/dashboard/requests");
   revalidatePath("/dashboard/loans");
   revalidatePath("/dashboard/inventory");
@@ -452,6 +454,9 @@ export async function approveGroup(requestGroupId: string, notes?: string) {
     }
   }
 
+  const groupIds = groupRequests.map((r) => r.id);
+  sendRequestApprovedEmail(groupIds, notes).catch(() => {});
+
   revalidatePath("/dashboard/requests");
   revalidatePath("/dashboard/loans");
   revalidatePath("/dashboard/inventory");
@@ -459,7 +464,7 @@ export async function approveGroup(requestGroupId: string, notes?: string) {
   return { success: true };
 }
 
-export async function rejectGroup(requestGroupId: string, reason: string) {
+export async function rejectGroup(requestGroupId: string, reason: string, approverNotes?: string | null) {
   const session = await auth();
   if (!session?.user) return { error: "לא מחובר" };
 
@@ -483,6 +488,7 @@ export async function rejectGroup(requestGroupId: string, reason: string) {
     }
   }
 
+  const groupIds = groupRequests.map((r) => r.id);
   for (const req of groupRequests) {
     await db
       .update(requests)
@@ -503,12 +509,14 @@ export async function rejectGroup(requestGroupId: string, reason: string) {
     });
   }
 
+  sendRequestRejectedEmail(groupIds, reason, approverNotes).catch(() => {});
+
   revalidatePath("/dashboard/requests");
   revalidatePath("/dashboard");
   return { success: true };
 }
 
-export async function rejectRequest(requestId: string, reason: string) {
+export async function rejectRequest(requestId: string, reason: string, approverNotes?: string | null) {
   const session = await auth();
 
   if (!session?.user) {
@@ -553,6 +561,8 @@ export async function rejectRequest(requestId: string, reason: string) {
     entityId: requestId,
     newValues: { reason },
   });
+
+  sendRequestRejectedEmail([requestId], reason, approverNotes).catch(() => {});
 
   revalidatePath("/dashboard/requests");
   revalidatePath("/dashboard");

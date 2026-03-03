@@ -34,6 +34,7 @@ export async function sendEmail(options: {
       text: options.text,
       headers: {
         "Content-Language": "he",
+        "Content-Type": "text/html; charset=utf-8",
       },
     });
     return true;
