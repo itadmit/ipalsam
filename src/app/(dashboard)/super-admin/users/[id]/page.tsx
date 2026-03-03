@@ -12,6 +12,7 @@ import { ArrowRight, User, Key, Shield } from "lucide-react";
 import { QuickRequestCardForUser } from "./quick-request-card";
 import { getRoleLabel, formatPhone, formatDate } from "@/lib/utils";
 import { EditUserForm } from "./edit-user-form";
+import { UserVisibleFeaturesForm } from "./user-visible-features-form";
 import { db } from "@/db";
 import { users, departments, soldierDepartments } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -176,6 +177,26 @@ export default async function EditUserPage({
               qrDataUrl={qrDataUrl}
               role={user.role === "dept_commander" ? "dept_commander" : "soldier"}
             />
+          )}
+
+          {isSuperAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  פיצ׳רים בתפריט
+                </CardTitle>
+                <p className="text-sm text-slate-500 mt-1">
+                  בחר אילו פיצ׳רים יוצגו למשתמש
+                </p>
+              </CardHeader>
+              <CardContent>
+                <UserVisibleFeaturesForm
+                  userId={user.id}
+                  initialFeatures={(user.visibleFeatures as Record<string, boolean> | null) ?? null}
+                />
+              </CardContent>
+            </Card>
           )}
 
           <Card>

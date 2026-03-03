@@ -131,6 +131,7 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true).notNull(),
   mustChangePassword: boolean("must_change_password").default(true).notNull(),
   lastLogin: timestamp("last_login"),
+  visibleFeatures: json("visible_features"), // { dashboard: true, inventory: true, ... } - null = default by role
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -92,7 +92,7 @@ export default async function LoginPage() {
           </div>
 
           <p className="text-center text-sm text-slate-500 mt-6">
-            <a href="/profile" className="text-emerald-600 hover:underline">
+            <a href="/about" className="text-emerald-600 hover:underline">
               השאלה מהירה (חיילים)
             </a>
           </p>

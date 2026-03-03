@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import type { SessionUser } from "@/types";
 import { db } from "@/db";
-import { openRequests, openRequestItems, handoverDepartments, departments } from "@/db/schema";
+import { openRequests, openRequestItems, handoverDepartments, departments, users } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 async function getPendingOpenRequestsCount(userId: string, role: string, departmentId: string | null): Promise<number> {
@@ -59,10 +59,16 @@ export default async function DashboardLayout({
     redirect("/change-password");
   }
 
-  const [pendingOpenRequests, hasOpenRequestsAccess] = await Promise.all([
+  const [pendingOpenRequests, hasOpenRequestsAccess, userRow] = await Promise.all([
     getPendingOpenRequestsCount(session.user.id, session.user.role, session.user.departmentId),
     getHasOpenRequestsAccess(session.user.id, session.user.role, session.user.departmentId),
+    db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { visibleFeatures: true },
+    }),
   ]);
+
+  const visibleFeatures = (userRow?.visibleFeatures as Record<string, boolean> | null) ?? null;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -70,6 +76,7 @@ export default async function DashboardLayout({
         user={session.user as SessionUser}
         pendingOpenRequests={pendingOpenRequests}
         hasOpenRequestsAccess={hasOpenRequestsAccess}
+        visibleFeatures={visibleFeatures}
       />
       <main className="lg:pr-72 flex-1 flex flex-col">
         <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 flex-1 max-w-full overflow-x-hidden">{children}</div>

@@ -26,16 +26,22 @@ export async function sendNewRequestEmails(
     columns: { email: true, firstName: true, lastName: true },
   });
 
-  const itemsByDept = new Map<string, { name: string; quantity: number }[]>();
+  const itemsByDept = new Map<string, { name: string; quantity: number; notes?: string | null }[]>();
   for (const r of reqs) {
     if (!r.itemType || !r.department) continue;
     const key = r.departmentId;
     const list = itemsByDept.get(key) || [];
     const existing = list.find((i) => i.name === r.itemType!.name);
-    if (existing) existing.quantity += r.quantity;
-    else list.push({ name: r.itemType.name, quantity: r.quantity });
+    if (existing) {
+      existing.quantity += r.quantity;
+      if (r.notes?.trim() && !existing.notes) existing.notes = r.notes;
+    } else {
+      list.push({ name: r.itemType.name, quantity: r.quantity, notes: r.notes });
+    }
     itemsByDept.set(key, list);
   }
+
+  const firstNotes = reqs.find((r) => r.notes?.trim())?.notes ?? null;
 
   const allItems = Array.from(itemsByDept.values()).flat();
   const deptNames = [...new Set(reqs.map((r) => r.department?.name).filter(Boolean))];
@@ -47,6 +53,7 @@ export async function sendNewRequestEmails(
       departmentName,
       items: allItems,
       recipientRole: "requester",
+      notes: firstNotes,
     });
     await sendEmail({
       to: requester.email,
@@ -75,6 +82,7 @@ export async function sendNewRequestEmails(
       departmentName: dept?.name || departmentName,
       items: deptItems,
       recipientRole: "approver",
+      notes: firstNotes,
     });
     await sendEmail({
       to: approver.email,
@@ -96,7 +104,11 @@ export async function sendNewOpenRequestEmails(
 
   if (!openReq?.items?.length) return;
 
-  const items = openReq.items.map((i) => ({ name: i.itemName, quantity: i.quantity }));
+  const items = openReq.items.map((i) => ({
+    name: i.itemName,
+    quantity: i.quantity,
+    notes: i.notes,
+  }));
   const departmentName = openReq.department?.name || "לוגיסטיקה";
 
   if (requesterId) {

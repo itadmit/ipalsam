@@ -98,7 +98,7 @@ export function ProfileHeader({
             <Menu className="w-5 h-5" />
           </button>
         </div>
-        <Link href={handoverPhone ? `/profile/${handoverPhone}` : "/profile"} className="flex justify-center">
+        <Link href={handoverPhone ? `/profile/${handoverPhone}` : "/about"} className="flex justify-center">
           <span
             className={`text-2xl font-bold transition-colors duration-300 ${showSolid ? "text-emerald-700" : "text-white drop-shadow-md [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]"}`}
             style={{ fontFamily: "var(--font-smooch-sans), system-ui, sans-serif" }}
@@ -243,7 +243,7 @@ export function ProfileHeader({
               </div>
               <nav className="flex-1 p-4 flex flex-col gap-1 overflow-auto bg-white/95 backdrop-blur-md">
                 <Link
-                  href={handoverPhone ? `/profile/${handoverPhone}` : "/profile"}
+                  href={handoverPhone ? `/profile/${handoverPhone}` : "/about"}
                   onClick={closeMenu}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
                 >
@@ -251,7 +251,7 @@ export function ProfileHeader({
                   פרופיל
                 </Link>
                 <Link
-                  href={handoverPhone ? `/profile/${handoverPhone}` : "/profile"}
+                  href={handoverPhone ? `/profile/${handoverPhone}` : "/about"}
                   onClick={closeMenu}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
                 >
@@ -264,7 +264,7 @@ export function ProfileHeader({
                       ? `/profile/${handoverPhone}/open-request`
                       : handoverPhone
                         ? `/profile/${handoverPhone}`
-                        : "/profile"
+                        : "/about"
                   }
                   onClick={closeMenu}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"

@@ -11,14 +11,14 @@ export default async function CheckoutPage({
 }) {
   const { phone } = await params;
   const phoneDigits = phone.replace(/\D/g, "").slice(-10);
-  if (phoneDigits.length < 9) redirect("/profile");
+  if (phoneDigits.length < 9) redirect("/about");
 
   const [storeData, session] = await Promise.all([
     getPublicStoreData(phoneDigits),
     auth(),
   ]);
 
-  if ("error" in storeData) redirect(`/profile?error=${encodeURIComponent(storeData.error || "שגיאה")}`);
+  if ("error" in storeData) redirect(`/about?error=${encodeURIComponent(storeData.error || "שגיאה")}`);
 
   const userPhone = (session?.user?.phone || "").replace(/\D/g, "").slice(-10);
   const isOwner = !!userPhone && (phoneDigits === userPhone || phoneDigits.endsWith(userPhone) || userPhone.endsWith(phoneDigits));

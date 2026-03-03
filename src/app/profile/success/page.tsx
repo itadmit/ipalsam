@@ -9,7 +9,7 @@ export default async function ProfileSuccessPage({
 }) {
   const { from } = await searchParams;
   const phoneDigits = from ? from.replace(/\D/g, "").slice(-10) : "";
-  const backToStore = phoneDigits.length >= 9 ? `/profile/${phoneDigits}` : "/profile";
+  const backToStore = phoneDigits.length >= 9 ? `/profile/${phoneDigits}` : "/about";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/30 flex items-center justify-center p-4">

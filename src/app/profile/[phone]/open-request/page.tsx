@@ -13,7 +13,7 @@ export default async function OpenRequestPage({
   const { phone: phoneParam } = await params;
   const phoneDigits = phoneParam.replace(/\D/g, "").slice(-10);
   if (phoneDigits.length < 9) {
-    redirect("/profile");
+    redirect("/about");
   }
 
   const [data, session] = await Promise.all([
@@ -22,7 +22,7 @@ export default async function OpenRequestPage({
   ]);
 
   if ("error" in data) {
-    redirect(`/profile?error=${encodeURIComponent(data.error || "שגיאה")}`);
+    redirect(`/about?error=${encodeURIComponent(data.error || "שגיאה")}`);
   }
 
   if (!data.showOpenRequestButton) {

@@ -31,6 +31,7 @@ interface SidebarProps {
   user: SessionUser;
   pendingOpenRequests?: number;
   hasOpenRequestsAccess?: boolean;
+  visibleFeatures?: Record<string, boolean> | null;
 }
 
 interface NavItem {
@@ -172,7 +173,23 @@ function NavContent({
   );
 }
 
-export function Sidebar({ user, pendingOpenRequests = 0, hasOpenRequestsAccess = false }: SidebarProps) {
+function getFeatureShow(
+  key: string,
+  defaultShow: boolean,
+  visibleFeatures?: Record<string, boolean> | null
+): boolean {
+  if (!visibleFeatures) return defaultShow;
+  if (visibleFeatures[key] === false) return false;
+  if (visibleFeatures[key] === true) return true;
+  return defaultShow;
+}
+
+export function Sidebar({
+  user,
+  pendingOpenRequests = 0,
+  hasOpenRequestsAccess = false,
+  visibleFeatures = null,
+}: SidebarProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -186,67 +203,71 @@ export function Sidebar({ user, pendingOpenRequests = 0, hasOpenRequestsAccess =
       href: "/dashboard",
       label: "דשבורד",
       icon: LayoutDashboard,
-      show: true,
+      show: getFeatureShow("dashboard", true, visibleFeatures),
     },
     {
       href: "/dashboard/inventory",
       label: "מלאי",
       icon: Package,
-      show: true,
+      show: getFeatureShow("inventory", true, visibleFeatures),
     },
     {
       href: "/dashboard/requests",
       label: "השאלות",
       icon: FileText,
-      show: true,
+      show: getFeatureShow("requests", true, visibleFeatures),
     },
     {
       href: "/dashboard/handover",
       label: "מסירה/החזרה",
       icon: ArrowLeftRight,
-      show: canAccessAdmin || isDeptCommander,
+      show: getFeatureShow("handover", canAccessAdmin || isDeptCommander, visibleFeatures),
     },
     {
       href: "/dashboard/loans",
       label: "השאלות פעילות",
       icon: Clock,
-      show: canAccessAdmin || isDeptCommander,
+      show: getFeatureShow("loans", canAccessAdmin || isDeptCommander, visibleFeatures),
     },
     {
       href: "/dashboard/open-requests",
       label: "בקשות פתוחות",
       icon: ClipboardList,
-      show: canAccessAdmin || isDeptCommander || !!hasOpenRequestsAccess,
+      show: getFeatureShow(
+        "open-requests",
+        canAccessAdmin || isDeptCommander || !!hasOpenRequestsAccess,
+        visibleFeatures
+      ),
     },
     {
       href: "/dashboard/profile",
       label: "פרופיל שלי",
       icon: UserCircle,
-      show: true,
+      show: getFeatureShow("profile", true, visibleFeatures),
     },
     {
       href: "/dashboard/profile/edit",
       label: "הגדרות פרופיל",
       icon: Settings,
-      show: true,
+      show: getFeatureShow("profile-edit", true, visibleFeatures),
     },
     {
       href: "/dashboard/schedule",
       label: "לוח תורים",
       icon: Calendar,
-      show: canAccessAdmin || isDeptCommander,
+      show: getFeatureShow("schedule", canAccessAdmin || isDeptCommander, visibleFeatures),
     },
     {
       href: "/dashboard/departments",
       label: "מחלקות",
       icon: Building2,
-      show: canAccessAdmin || isDeptCommander,
+      show: getFeatureShow("departments", canAccessAdmin || isDeptCommander, visibleFeatures),
     },
     {
       href: "/dashboard/users",
       label: "משתמשים",
       icon: Users,
-      show: canAccessAdmin || isDeptCommander,
+      show: getFeatureShow("users", canAccessAdmin || isDeptCommander, visibleFeatures),
     },
   ];
 
@@ -255,37 +276,37 @@ export function Sidebar({ user, pendingOpenRequests = 0, hasOpenRequestsAccess =
       href: "/super-admin",
       label: "אזור ניהול",
       icon: Shield,
-      show: canAccessAdmin,
+      show: getFeatureShow("super-admin-area", canAccessAdmin, visibleFeatures),
     },
     {
       href: "/super-admin/base",
       label: "ניהול בסיס",
       icon: Database,
-      show: isSuperAdmin,
+      show: getFeatureShow("base", isSuperAdmin, visibleFeatures),
     },
     {
       href: "/super-admin/categories",
       label: "קטגוריות",
       icon: Boxes,
-      show: canAccessAdmin,
+      show: getFeatureShow("categories", canAccessAdmin, visibleFeatures),
     },
     {
       href: "/super-admin/reports",
       label: "דוחות",
       icon: ClipboardList,
-      show: canAccessAdmin,
+      show: getFeatureShow("reports", canAccessAdmin, visibleFeatures),
     },
     {
       href: "/super-admin/audit-log",
       label: "יומן פעילות",
       icon: History,
-      show: canAccessAdmin,
+      show: getFeatureShow("audit-log", canAccessAdmin, visibleFeatures),
     },
     {
       href: "/super-admin/settings",
       label: "הגדרות",
       icon: Settings,
-      show: isSuperAdmin,
+      show: getFeatureShow("settings", isSuperAdmin, visibleFeatures),
     },
   ];
 

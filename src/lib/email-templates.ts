@@ -37,16 +37,21 @@ function baseTemplate(content: string) {
 export function newRequestEmail(options: {
   recipientName: string;
   departmentName: string;
-  items: { name: string; quantity: number }[];
+  items: { name: string; quantity: number; notes?: string | null }[];
   recipientRole: "requester" | "approver";
+  notes?: string | null;
 }) {
-  const { recipientName, departmentName, items, recipientRole } = options;
+  const { recipientName, departmentName, items, recipientRole, notes } = options;
   const isRequester = recipientRole === "requester";
 
   const itemsRows = items
     .map(
       (i) =>
-        `<tr><td style="${STYLES.td}">${i.name}</td><td style="${STYLES.td}">${i.quantity}</td></tr>`
+        `<tr>
+          <td style="${STYLES.td}">${i.name}</td>
+          <td style="${STYLES.td}">${i.quantity}</td>
+          <td style="${STYLES.td}">${i.notes?.trim() || "-"}</td>
+        </tr>`
     )
     .join("");
 
@@ -62,10 +67,12 @@ export function newRequestEmail(options: {
           <tr>
             <th style="${STYLES.th}">פריט</th>
             <th style="${STYLES.th}">כמות</th>
+            <th style="${STYLES.th}">הערות</th>
           </tr>
         </thead>
         <tbody>${itemsRows}</tbody>
       </table>
+      ${notes?.trim() ? `<p style="${STYLES.text}"><strong>הערות כלליות:</strong> ${notes.trim()}</p>` : ""}
       <p style="${STYLES.text}">
         ${isRequester ? "תוכל לעקוב אחר סטטוס הבקשה בדשבורד." : "נא לאשר או לדחות את הבקשה במערכת."}
       </p>
@@ -80,7 +87,7 @@ export function newRequestEmail(options: {
 export function newOpenRequestEmail(options: {
   recipientName: string;
   departmentName: string;
-  items: { name: string; quantity: number }[];
+  items: { name: string; quantity: number; notes?: string | null }[];
   recipientRole: "requester" | "approver";
   source?: "dashboard" | "public_store";
 }) {
@@ -90,7 +97,11 @@ export function newOpenRequestEmail(options: {
   const itemsRows = items
     .map(
       (i) =>
-        `<tr><td style="${STYLES.td}">${i.name}</td><td style="${STYLES.td}">${i.quantity}</td></tr>`
+        `<tr>
+          <td style="${STYLES.td}">${i.name}</td>
+          <td style="${STYLES.td}">${i.quantity}</td>
+          <td style="${STYLES.td}">${i.notes?.trim() || "-"}</td>
+        </tr>`
     )
     .join("");
 
@@ -106,6 +117,7 @@ export function newOpenRequestEmail(options: {
           <tr>
             <th style="${STYLES.th}">פריט</th>
             <th style="${STYLES.th}">כמות</th>
+            <th style="${STYLES.th}">הערות</th>
           </tr>
         </thead>
         <tbody>${itemsRows}</tbody>

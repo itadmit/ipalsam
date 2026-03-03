@@ -13,7 +13,7 @@ export function PublicAppHeader({ backHref, backLabel = "חזרה" }: PublicAppH
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b border-slate-200">
       <div className="max-w-lg mx-auto grid grid-cols-3 items-center h-14 px-4">
         <div />
-        <Link href="/profile" className="flex justify-center">
+        <Link href="/about" className="flex justify-center">
           <span className="text-lg font-bold text-emerald-700" style={{ fontFamily: "var(--font-smooch-sans), system-ui, sans-serif" }}>iPalsam</span>
         </Link>
         <div className="flex justify-end">

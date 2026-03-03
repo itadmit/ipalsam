@@ -13,8 +13,9 @@ async function main() {
   const html = newRequestEmail({
     recipientName: "משתמש בדיקה",
     departmentName: "מחלקת לוגיסטיקה",
-    items: [{ name: "פריט בדיקה", quantity: 1 }],
+    items: [{ name: "פריט בדיקה", quantity: 1, notes: "הערת בדיקה" }],
     recipientRole: "requester",
+    notes: "הערות כלליות לבדיקה",
   });
   const ok = await sendEmail({
     to,

@@ -62,7 +62,20 @@ async function addMissingColumns() {
   `;
   console.log("✅ handover_departments");
 
-  // 5. soldier_departments
+  // 5. visible_features ב-users
+  try {
+    await sql`ALTER TABLE users ADD COLUMN visible_features jsonb`;
+    console.log("✅ users.visible_features");
+  } catch (e: unknown) {
+    const err = e as { code?: string };
+    if (err?.code === "42701") {
+      console.log("✓ users.visible_features כבר קיים");
+    } else {
+      throw e;
+    }
+  }
+
+  // 6. soldier_departments (if not exists - CREATE TABLE handles it)
   await sql`
     CREATE TABLE IF NOT EXISTS soldier_departments (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

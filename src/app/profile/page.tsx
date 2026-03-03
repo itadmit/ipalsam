@@ -1,10 +1,10 @@
-import { Suspense } from "react";
-import { ProfileEntryContent } from "./profile-entry-content";
+import { redirect } from "next/navigation";
 
-export default function ProfileEntryPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">טוען...</div>}>
-      <ProfileEntryContent />
-    </Suspense>
-  );
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  redirect(error ? `/about?error=${encodeURIComponent(error)}` : "/about");
 }

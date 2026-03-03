@@ -7,6 +7,7 @@ import { hash } from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { CreateUserFormData } from "@/types";
+import type { VisibleFeatures } from "@/lib/visible-features";
 
 export async function createUser(data: CreateUserFormData) {
   const session = await auth();
@@ -142,6 +143,26 @@ export async function updateUser(
 
   revalidatePath("/dashboard/users");
   revalidatePath("/super-admin/users");
+
+  return { success: true };
+}
+
+export async function updateUserVisibleFeatures(userId: string, features: VisibleFeatures) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "super_admin") {
+    return { error: "רק סופר אדמין יכול לערוך פיצ׳רים" };
+  }
+
+  await db
+    .update(users)
+    .set({ visibleFeatures: features as object, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+
+  revalidatePath("/dashboard/users");
+  revalidatePath("/super-admin/users");
+  revalidatePath(`/super-admin/users/${userId}`);
+  revalidatePath("/dashboard");
 
   return { success: true };
 }
