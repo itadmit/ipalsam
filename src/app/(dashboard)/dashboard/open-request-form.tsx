@@ -153,36 +153,39 @@ export function OpenRequestForm({ departments, trigger }: OpenRequestFormProps) 
             </div>
             <div className="space-y-2">
               {rows.map((row) => (
-                <div key={row.id} className="flex gap-2 items-start">
-                  <Input
-                    placeholder="שם הפריט"
-                    value={row.itemName}
-                    onChange={(e) => updateRow(row.id, "itemName", e.target.value)}
-                    className="flex-1"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="כמות"
-                    value={row.quantity || ""}
-                    onChange={(e) => updateRow(row.id, "quantity", parseInt(e.target.value) || 1)}
-                    className="w-20"
-                  />
-                  <Input
+                <div key={row.id} className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      placeholder="שם הפריט"
+                      value={row.itemName}
+                      onChange={(e) => updateRow(row.id, "itemName", e.target.value)}
+                      className="flex-1 min-w-0"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="כמות"
+                      value={row.quantity || ""}
+                      onChange={(e) => updateRow(row.id, "quantity", parseInt(e.target.value) || 1)}
+                      className="w-14 shrink-0"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeRow(row.id)}
+                      disabled={rows.length <= 1}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
+                  <textarea
                     placeholder="הערות"
                     value={row.notes}
                     onChange={(e) => updateRow(row.id, "notes", e.target.value)}
-                    className="flex-1"
+                    rows={3}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeRow(row.id)}
-                    disabled={rows.length <= 1}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </Button>
                 </div>
               ))}
             </div>
