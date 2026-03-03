@@ -193,7 +193,10 @@ export async function createOpenRequestFromPublicStore(
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/open-requests");
-  return { success: true, id: newRequest.id };
+  const requestNumber = String(
+    parseInt(newRequest.id.replace(/-/g, "").slice(-8), 16) % 1000000
+  ).padStart(6, "0");
+  return { success: true, id: newRequest.id, requestNumber };
 }
 
 export async function approveOpenRequestItem(itemId: string, approvalNotes?: string | null) {

@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PublicOpenRequestForm } from "./public-open-request-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, ShoppingCart, Plus, Minus, Send, User, Phone, MessageCircle } from "lucide-react";
+import { Package, ShoppingCart, Plus, Minus, Send, User, Phone, MessageCircle, CheckCircle2, UserCircle } from "lucide-react";
 
 interface ProfileData {
   name: string;
@@ -42,6 +43,7 @@ export function PublicStore({
 }: PublicStoreProps) {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [successData, setSuccessData] = useState<{ requestId: string; requestNumber: string } | null>(null);
 
   const cartTotal = cart.reduce((sum, c) => sum + c.quantity, 0);
 
@@ -138,8 +140,33 @@ export function PublicStore({
           </div>
         </div>
 
-        {/* סקשנים מתחת להדר */}
+        {/* סקשנים מתחת להדר – או מסך הצלחה */}
         <div className="pt-4 px-3 space-y-4">
+          {successData ? (
+            <Card className="border-slate-200 shadow overflow-hidden">
+              <CardContent className="py-12 px-6">
+                <p className="text-center text-slate-500 font-medium mb-6">
+                  בקשה מספר: {successData.requestNumber}
+                </p>
+                <div className="flex flex-col items-center justify-center gap-6">
+                  <div className="w-24 h-24 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <CheckCircle2 className="w-14 h-14 text-emerald-600" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <h2 className="text-xl font-semibold text-slate-900">בקשתך נקלטה</h2>
+                    <p className="text-slate-600">תוכל לקבל עדכון באיזור האישי שלך</p>
+                  </div>
+                  <Link href="/dashboard/profile">
+                    <Button className="gap-2" size="lg">
+                      <UserCircle className="w-5 h-5" />
+                      לאיזור האישי שלי
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+          <>
           {/* בקשה חדשה - אם מוגדר (כמו החנות, בעמוד הפרופיל) */}
           {showOpenRequestButton && (
             <Card className="border-slate-200 shadow">
@@ -158,6 +185,7 @@ export function PublicStore({
                   handoverPhone={handoverPhone}
                   storeName={storeName}
                   variant="inline"
+                  onSuccess={(requestId, requestNumber) => setSuccessData({ requestId, requestNumber })}
                 />
               </CardContent>
             </Card>
@@ -205,6 +233,8 @@ export function PublicStore({
                 אין תוכן להצגה
               </CardContent>
             </Card>
+          )}
+          </>
           )}
         </div>
 

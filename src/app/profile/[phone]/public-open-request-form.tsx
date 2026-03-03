@@ -14,6 +14,8 @@ interface PublicOpenRequestFormProps {
   storeName: string;
   /** inline = מוצג בעמוד הפרופיל כמו החנות, modal = נפתח בחלון */
   variant?: "inline" | "modal";
+  /** קריאה כשהבקשה נשלחה – מאפשרת להציג מסך הצלחה */
+  onSuccess?: (requestId: string, requestNumber: string) => void;
 }
 
 interface ItemRow {
@@ -32,6 +34,7 @@ export function PublicOpenRequestForm({
   handoverPhone,
   storeName,
   variant = "modal",
+  onSuccess,
 }: PublicOpenRequestFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -174,13 +177,19 @@ export function PublicOpenRequestForm({
 
       if (result.error) {
         setError(result.error);
-      } else {
-        setSuccess(true);
-        setRows([{ id: generateId(), itemName: "", quantity: 1, notes: "" }]);
-        setTimeout(() => {
-          if (variant === "modal") setOpen(false);
-          setSuccess(false);
-        }, 1500);
+      } else if ("id" in result && result.id) {
+        const id = result.id;
+        const requestNumber = "requestNumber" in result && result.requestNumber ? result.requestNumber : id.slice(-8).toUpperCase();
+        if (onSuccess) {
+          onSuccess(id, requestNumber);
+        } else {
+          setSuccess(true);
+          setRows([{ id: generateId(), itemName: "", quantity: 1, notes: "" }]);
+          setTimeout(() => {
+            if (variant === "modal") setOpen(false);
+            setSuccess(false);
+          }, 1500);
+        }
       }
     } catch {
       setError("אירעה שגיאה. אנא נסה שוב");
@@ -196,7 +205,7 @@ export function PublicOpenRequestForm({
               {error}
             </div>
           )}
-          {success && (
+          {success && !onSuccess && (
             <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
               הבקשה נשלחה בהצלחה!
             </div>
