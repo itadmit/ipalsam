@@ -24,6 +24,7 @@ import {
   Calendar,
   UserCircle,
   BookOpen,
+  Send,
 } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
@@ -239,6 +240,12 @@ export function Sidebar({
         canAccessAdmin || isDeptCommander || !!hasOpenRequestsAccess,
         visibleFeatures
       ),
+    },
+    {
+      href: "/dashboard/my-open-requests",
+      label: "הבקשות שלי",
+      icon: Send,
+      show: getFeatureShow("my-open-requests", user.role === "soldier", visibleFeatures),
     },
     {
       href: "/dashboard/profile",

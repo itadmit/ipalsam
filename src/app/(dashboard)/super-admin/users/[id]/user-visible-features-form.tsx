@@ -22,6 +22,7 @@ const MAIN_FEATURES = [
   "handover",
   "loans",
   "open-requests",
+  "my-open-requests",
   "profile",
   "profile-edit",
   "schedule",

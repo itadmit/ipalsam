@@ -88,8 +88,8 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
       </div>
 
       <Dialog open={showApproveDialog} onOpenChange={(open) => { setShowApproveDialog(open); if (!open) setApprovalNotes(""); }}>
-        <DialogContent className="max-w-md p-6">
-          <DialogHeader className="!pt-0 pb-3 border-b border-slate-200">
+        <DialogContent className="max-w-md p-6 pb-4">
+          <DialogHeader className="!pt-0 !px-0 pb-3 border-b border-slate-200">
             <DialogTitle className="text-emerald-700">אישור פריט</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
@@ -108,7 +108,7 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
               />
             </div>
           </div>
-          <DialogFooter className="pt-4 border-t border-slate-200 gap-2">
+          <DialogFooter className="pt-4 !pb-0 border-t border-slate-200 gap-2">
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
               ביטול
             </Button>
@@ -121,8 +121,8 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
       </Dialog>
 
       <Dialog open={showRejectDialog} onOpenChange={(open) => { setShowRejectDialog(open); if (!open) setRejectionReason(""); }}>
-        <DialogContent className="max-w-md p-6">
-          <DialogHeader className="!pt-0 pb-3 border-b border-slate-200">
+        <DialogContent className="max-w-md p-6 pb-4">
+          <DialogHeader className="!pt-0 !px-0 pb-3 border-b border-slate-200">
             <DialogTitle className="text-red-600">דחיית פריט</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
@@ -140,7 +140,7 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
               />
             </div>
           </div>
-          <DialogFooter className="pt-4 border-t border-slate-200 gap-2">
+          <DialogFooter className="pt-4 !pb-0 border-t border-slate-200 gap-2">
             <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
               ביטול
             </Button>
