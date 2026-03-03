@@ -213,7 +213,7 @@ export async function approveOpenRequestItem(itemId: string) {
 
   let canApprove: boolean;
   if (isPublicStore && handoverUserId) {
-    canApprove = session.user.role === "super_admin" || session.user.role === "hq_commander" || session.user.id === handoverUserId;
+    canApprove = session.user.role === "super_admin" || session.user.id === handoverUserId;
   } else {
     const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
     const handover = await db.query.handoverDepartments.findFirst({
@@ -277,7 +277,7 @@ export async function rejectOpenRequestItem(itemId: string, reason?: string) {
 
   let canReject: boolean;
   if (isPublicStore && handoverUserId) {
-    canReject = session.user.role === "super_admin" || session.user.role === "hq_commander" || session.user.id === handoverUserId;
+    canReject = session.user.role === "super_admin" || session.user.id === handoverUserId;
   } else {
     const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
     const handover = await db.query.handoverDepartments.findFirst({

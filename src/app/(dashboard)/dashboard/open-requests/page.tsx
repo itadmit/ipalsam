@@ -69,14 +69,14 @@ export default async function OpenRequestsPage() {
     },
   });
 
-  // הפרדה מלאה: בקשות מ-public_store – רק בעל החנות רואה. בקשות מ-dashboard – לפי מחלקה.
+  // הפרדה מלאה: בקשות מ-public_store – רק בעל החנות רואה. super_admin רואה הכל. hq_commander לא רואה בקשות של אחרים.
   const allRequests = allRequestsRaw.filter((r) => {
     if (r.source === "public_store") {
       if (r.handoverUserId) {
-        return r.handoverUserId === userId || isSuperAdmin || isHQ;
+        return r.handoverUserId === userId || isSuperAdmin;
       }
-      // בקשות ישנות ללא handoverUserId – לפי מחלקה (התנהגות ישנה)
-      return true;
+      // בקשות ישנות ללא handoverUserId – לא להציג (אין דרך לדעת למי שייכות)
+      return false;
     }
     return true;
   });

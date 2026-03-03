@@ -27,10 +27,17 @@ async function getPendingOpenRequestsCount(userId: string, role: string, departm
 
   const reqs = await db.query.openRequests.findMany({
     where: inArray(openRequests.departmentId, deptIds),
-    columns: { id: true },
+    columns: { id: true, source: true, handoverUserId: true },
     with: { items: { columns: { id: true, status: true } } },
   });
-  return reqs.reduce((sum, r) => sum + (r.items?.filter((i) => i.status === "pending").length ?? 0), 0);
+  // בקשות מ-public_store – רק בעל החנות רואה (super_admin רואה הכל)
+  const filtered = reqs.filter((r) => {
+    if (r.source === "public_store" && r.handoverUserId) {
+      return r.handoverUserId === userId || role === "super_admin";
+    }
+    return true;
+  });
+  return filtered.reduce((sum, r) => sum + (r.items?.filter((i) => i.status === "pending").length ?? 0), 0);
 }
 
 async function getHasOpenRequestsAccess(userId: string, role: string, departmentId: string | null): Promise<boolean> {
