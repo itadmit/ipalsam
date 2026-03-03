@@ -82,13 +82,13 @@ export function DialogContent({
       />
       <div
         className={cn(
-          "relative z-50 w-full max-w-lg mx-4 bg-white rounded-xl shadow-xl animate-in fade-in-0 zoom-in-95",
+          "relative z-50 w-full max-w-lg mx-4 bg-white rounded-xl shadow-xl animate-in fade-in-0 zoom-in-95 p-8",
           className
         )}
       >
         <button
           onClick={() => setOpen(false)}
-          className="absolute left-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          className="absolute left-6 top-6 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">סגור</span>

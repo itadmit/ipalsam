@@ -14,7 +14,7 @@ import {
 } from "@/db/schema";
 import { eq, and, inArray, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { sendNewOpenRequestEmails } from "@/lib/send-request-emails";
+import { sendNewOpenRequestEmails, sendOpenRequestItemApprovedEmail } from "@/lib/send-request-emails";
 
 export interface OpenRequestItemInput {
   itemName: string;
@@ -196,7 +196,7 @@ export async function createOpenRequestFromPublicStore(
   return { success: true, id: newRequest.id };
 }
 
-export async function approveOpenRequestItem(itemId: string) {
+export async function approveOpenRequestItem(itemId: string, approvalNotes?: string | null) {
   const session = await auth();
   if (!session?.user) return { error: "יש להתחבר" };
 
@@ -227,26 +227,33 @@ export async function approveOpenRequestItem(itemId: string) {
 
   if (!canApprove) return { error: "אין הרשאה לאשר" };
 
+  const notes = approvalNotes?.trim() || null;
   await db
     .update(openRequestItems)
     .set({
       status: "approved",
       approvedById: session.user.id,
       approvedAt: new Date(),
+      approvalNotes: notes,
     })
     .where(eq(openRequestItems.id, itemId));
 
   // התראה למבקש
   const requesterId = item.openRequest.requesterId;
   if (requesterId) {
+    const bodyText = notes
+      ? `הפריט "${item.itemName}" אושר. הערות: ${notes}`
+      : `הפריט "${item.itemName}" אושר`;
     await db.insert(notifications).values({
       userId: requesterId,
       type: "request_approved",
       title: "הבקשה אושרה",
-      body: `הפריט "${item.itemName}" אושר`,
-      metadata: { openRequestId: item.openRequest.id, openRequestItemId: itemId },
+      body: bodyText,
+      metadata: { openRequestId: item.openRequest.id, openRequestItemId: itemId, approvalNotes: notes },
     });
   }
+
+  sendOpenRequestItemApprovedEmail(itemId, notes).catch(() => {});
 
   await db.insert(auditLogs).values({
     userId: session.user.id,
@@ -322,5 +329,54 @@ export async function rejectOpenRequestItem(itemId: string, reason?: string) {
   });
 
   revalidatePath("/dashboard/open-requests");
+  return { success: true };
+}
+
+export async function deleteOpenRequest(requestId: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "יש להתחבר" };
+
+  const request = await db.query.openRequests.findFirst({
+    where: eq(openRequests.id, requestId),
+  });
+
+  if (!request) return { error: "בקשה לא נמצאה" };
+
+  const deptId = request.departmentId;
+  const handoverUserId = request.handoverUserId;
+  const isPublicStore = request.source === "public_store";
+
+  let canDelete: boolean;
+  if (isPublicStore && handoverUserId) {
+    canDelete = session.user.role === "super_admin" || session.user.id === handoverUserId;
+  } else {
+    const isDeptCommander = session.user.role === "dept_commander" && session.user.departmentId === deptId;
+    const handover = await db.query.handoverDepartments.findFirst({
+      where: and(
+        eq(handoverDepartments.userId, session.user.id),
+        eq(handoverDepartments.departmentId, deptId)
+      ),
+    });
+    const isHQ = session.user.role === "hq_commander";
+    const allDepts = isHQ || session.user.role === "super_admin";
+    const deptIds = allDepts
+      ? (await db.query.departments.findMany({ where: eq(departments.isActive, true), columns: { id: true } })).map((d) => d.id)
+      : isDeptCommander && deptId ? [deptId] : handover ? [handover.departmentId] : [];
+    canDelete = session.user.role === "super_admin" || (isHQ && deptIds.includes(deptId)) || isDeptCommander || !!handover;
+  }
+
+  if (!canDelete) return { error: "אין הרשאה למחוק בקשה זו" };
+
+  await db.delete(openRequests).where(eq(openRequests.id, requestId));
+
+  await db.insert(auditLogs).values({
+    userId: session.user.id,
+    action: "delete_open_request",
+    entityType: "open_request",
+    entityId: requestId,
+  });
+
+  revalidatePath("/dashboard/open-requests");
+  revalidatePath("/dashboard/profile");
   return { success: true };
 }

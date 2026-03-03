@@ -179,6 +179,32 @@ export function requestApprovedEmail(options: {
   return baseTemplate(bodyContent);
 }
 
+export function openRequestItemApprovedEmail(options: {
+  recipientName: string;
+  itemName: string;
+  quantity: number;
+  departmentName: string;
+  approverNotes?: string | null;
+}) {
+  const { recipientName, itemName, quantity, departmentName, approverNotes } = options;
+
+  const bodyContent = `
+    <div dir="rtl" style="${STYLES.body}">
+      <p style="${STYLES.title}">שלום ${recipientName},</p>
+      <p style="${STYLES.text}">
+        הפריט <strong>${itemName}</strong> (${quantity} יח') בבקשך הפתוחה <strong>אושר</strong>.
+      </p>
+      <p style="${STYLES.text}">מחלקה: <strong>${departmentName}</strong></p>
+      ${approverNotes?.trim() ? `<p style="${STYLES.text}"><strong>הערות מהמאשר:</strong> ${approverNotes.trim()}</p>` : ""}
+      <p style="${STYLES.text}">תוכל לצפות בסטטוס הבקשה בפרופיל שלך.</p>
+    </div>
+    <div dir="rtl" style="${STYLES.footer}">
+      iPalsam – ניהול ציוד בבסיס צבאי
+    </div>`;
+
+  return baseTemplate(bodyContent);
+}
+
 export function requestRejectedEmail(options: {
   recipientName: string;
   departmentName: string;

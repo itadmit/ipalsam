@@ -23,6 +23,7 @@ import {
   History,
   Calendar,
   UserCircle,
+  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
@@ -250,6 +251,12 @@ export function Sidebar({
       label: "הגדרות פרופיל",
       icon: Settings,
       show: getFeatureShow("profile-edit", true, visibleFeatures),
+    },
+    {
+      href: "/dashboard/guides",
+      label: "מדריכים",
+      icon: BookOpen,
+      show: true,
     },
     {
       href: "/dashboard/schedule",

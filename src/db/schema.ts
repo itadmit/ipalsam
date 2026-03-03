@@ -331,6 +331,7 @@ export const openRequestItems = pgTable("open_request_items", {
   status: openRequestStatusEnum("status").default("pending").notNull(),
   approvedById: uuid("approved_by_id").references(() => users.id),
   approvedAt: timestamp("approved_at"),
+  approvalNotes: text("approval_notes"), // הערות מהמאשר – נשלחות במייל ומוצגות למבקש
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

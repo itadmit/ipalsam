@@ -166,7 +166,7 @@ export default async function ProfilePage() {
                         {req.source === "public_store" ? (
                           <>
                             <Store className="w-3 h-3 ml-1" />
-                            מהחנות
+                            בקשה פתוחה
                           </>
                         ) : (
                           <>
@@ -194,18 +194,28 @@ export default async function ProfilePage() {
                         </span>
                       )}
                     </div>
-                    <ul className="mt-2 text-sm text-slate-700 list-disc list-inside">
+                    <ul className="mt-2 text-sm text-slate-700 list-disc list-inside space-y-1">
                       {req.items.map((item) => (
-                        <li key={item.id}>
+                        <li key={item.id} className="py-0.5">
                           {item.itemName} x{item.quantity}
                           {item.status === "pending" && (
                             <span className="text-amber-600 text-xs me-1">(ממתין)</span>
                           )}
                           {item.status === "approved" && (
-                            <span className="text-emerald-600 text-xs me-1">(אושר)</span>
+                            <>
+                              <span className="text-emerald-600 text-xs me-1">(אושר)</span>
+                              {item.approvalNotes?.trim() && (
+                                <span className="text-slate-500 text-xs me-1">– {item.approvalNotes}</span>
+                              )}
+                            </>
                           )}
                           {item.status === "rejected" && (
-                            <span className="text-red-600 text-xs me-1">(נדחה)</span>
+                            <>
+                              <span className="text-red-600 text-xs me-1">(נדחה)</span>
+                              {item.rejectionReason?.trim() && (
+                                <span className="text-red-600/80 text-xs me-1">– {item.rejectionReason}</span>
+                              )}
+                            </>
                           )}
                         </li>
                       ))}

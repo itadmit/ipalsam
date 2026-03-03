@@ -1,10 +1,10 @@
 "use server";
 
 import { db } from "@/db";
-import { requests, users, departments, openRequests, systemSettings } from "@/db/schema";
+import { requests, users, departments, openRequests, openRequestItems, systemSettings } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { sendEmail } from "./email";
-import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail } from "./email-templates";
+import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail, openRequestItemApprovedEmail } from "./email-templates";
 
 async function isNewRequestEmailsEnabled(): Promise<boolean> {
   const row = await db.query.systemSettings.findFirst({
@@ -204,6 +204,48 @@ export async function sendRequestApprovedEmail(
   await sendEmail({
     to: requester.email,
     subject: "הבקשה שלך אושרה – iPalsam",
+    html,
+  });
+}
+
+export async function sendOpenRequestItemApprovedEmail(
+  openRequestItemId: string,
+  approverNotes?: string | null
+) {
+  if (!(await isNewRequestEmailsEnabled())) return;
+
+  const item = await db.query.openRequestItems.findFirst({
+    where: eq(openRequestItems.id, openRequestItemId),
+    with: {
+      openRequest: {
+        with: { department: { columns: { name: true } } },
+      },
+    },
+  });
+
+  if (!item || item.status !== "approved" || !item.openRequest?.requesterId) return;
+
+  const requester = await db.query.users.findFirst({
+    where: eq(users.id, item.openRequest.requesterId),
+    columns: { email: true, firstName: true, lastName: true },
+  });
+
+  if (!requester?.email) return;
+
+  const departmentName = item.openRequest.department?.name || "לוגיסטיקה";
+  const notes = approverNotes ?? item.approvalNotes ?? null;
+
+  const html = openRequestItemApprovedEmail({
+    recipientName: `${requester.firstName} ${requester.lastName}`.trim(),
+    itemName: item.itemName,
+    quantity: item.quantity,
+    departmentName,
+    approverNotes: notes,
+  });
+
+  await sendEmail({
+    to: requester.email,
+    subject: `הפריט "${item.itemName}" אושר – iPalsam`,
     html,
   });
 }

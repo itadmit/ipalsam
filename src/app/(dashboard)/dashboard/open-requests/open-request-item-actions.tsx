@@ -18,6 +18,7 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [approvalNotes, setApprovalNotes] = useState("");
 
   if (status !== "pending") {
     return (
@@ -30,10 +31,11 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
   const handleApprove = async () => {
     setLoading("approve");
     try {
-      const result = await approveOpenRequestItem(itemId);
+      const result = await approveOpenRequestItem(itemId, approvalNotes.trim() || undefined);
       if (result.error) alert(result.error);
       else {
         setShowApproveDialog(false);
+        setApprovalNotes("");
         router.refresh();
       }
     } catch (error) {
@@ -85,15 +87,28 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
         </Button>
       </div>
 
-      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-        <DialogContent>
-          <DialogHeader>
+      <Dialog open={showApproveDialog} onOpenChange={(open) => { setShowApproveDialog(open); if (!open) setApprovalNotes(""); }}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="!pt-0 pb-3 border-b border-slate-200">
             <DialogTitle className="text-emerald-700">אישור פריט</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <p className="text-slate-600">האם אתה בטוח שברצונך לאשר פריט זה?</p>
+          <div className="space-y-4 pt-4">
+            <p className="text-slate-600 text-sm">האם אתה בטוח שברצונך לאשר פריט זה?</p>
+            <div className="space-y-2">
+              <label htmlFor="approval-notes" className="block text-sm font-medium text-slate-700">
+                הערות (יישלחו במייל ויופיעו למבקש)
+              </label>
+              <textarea
+                id="approval-notes"
+                value={approvalNotes}
+                onChange={(e) => setApprovalNotes(e.target.value)}
+                placeholder="למשל: ניתן לאסוף מחר בבוקר"
+                rows={3}
+                className="flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+              />
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-4 border-t border-slate-200 gap-2">
             <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
               ביטול
             </Button>
@@ -106,14 +121,14 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
       </Dialog>
 
       <Dialog open={showRejectDialog} onOpenChange={(open) => { setShowRejectDialog(open); if (!open) setRejectionReason(""); }}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="!pt-0 pb-3 border-b border-slate-200">
             <DialogTitle className="text-red-600">דחיית פריט</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-slate-600">האם אתה בטוח שברצונך לדחות פריט זה?</p>
-            <div>
-              <label htmlFor="reject-reason" className="block text-sm font-medium text-slate-700 mb-1.5">
+          <div className="space-y-4 pt-4">
+            <p className="text-slate-600 text-sm">האם אתה בטוח שברצונך לדחות פריט זה?</p>
+            <div className="space-y-2">
+              <label htmlFor="reject-reason" className="block text-sm font-medium text-slate-700">
                 סיבת הדחייה (אופציונלי)
               </label>
               <input
@@ -121,11 +136,11 @@ export function OpenRequestItemActions({ itemId, status }: OpenRequestItemAction
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 placeholder="למשל: אין מלאי"
-                className="flex h-11 w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm"
+                className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-4 border-t border-slate-200 gap-2">
             <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
               ביטול
             </Button>
