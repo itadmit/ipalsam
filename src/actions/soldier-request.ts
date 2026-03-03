@@ -14,6 +14,7 @@ import {
   departments,
 } from "@/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { sendNewRequestEmails } from "@/lib/send-request-emails";
 import { hash } from "bcryptjs";
 import { createRequestToken, verifyRequestToken } from "@/lib/request-token";
 import { revalidatePath } from "next/cache";
@@ -642,6 +643,18 @@ export async function createRequestBySoldier(
       await executeHandover(newRequest.id, requester.id);
     }
   }
+
+  const deptIds = [...new Set(items.map((r) => r.departmentId))];
+  const handoverRows = await db.query.handoverDepartments.findMany({
+    where: inArray(handoverDepartments.departmentId, deptIds),
+    columns: { userId: true },
+  });
+  const deptCommanders = await db.query.users.findMany({
+    where: inArray(users.departmentId, deptIds),
+    columns: { id: true },
+  });
+  const approverIds = [...new Set([...handoverRows.map((h) => h.userId), ...deptCommanders.map((u) => u.id)])];
+  sendNewRequestEmails(created, requester.id, approverIds).catch(() => {});
 
   revalidatePath("/dashboard/requests");
   revalidatePath("/dashboard/loans");

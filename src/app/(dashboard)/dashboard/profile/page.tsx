@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { users, departments } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, openRequests } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Phone, User, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Phone, User, Pencil, Store, FileText, ExternalLink } from "lucide-react";
+import { formatDateTime } from "@/lib/utils";
 
 const roleLabels: Record<string, string> = {
   dept_commander: "מפקד מחלקה",
@@ -41,18 +43,40 @@ export default async function ProfilePage() {
   const name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "משתמש";
   const roleLabel = roleLabels[user.role || "soldier"] || "חייל";
 
+  const phoneDigits = (user.phone || "").replace(/\D/g, "").slice(-10);
+  const hasValidPhone = phoneDigits.length >= 9;
+
+  const myOpenRequests = await db.query.openRequests.findMany({
+    where: eq(openRequests.requesterId, session.user.id),
+    orderBy: [desc(openRequests.createdAt)],
+    with: {
+      department: { columns: { name: true } },
+      items: true,
+    },
+  });
+
   return (
     <div>
       <PageHeader
         title="הפרופיל שלי"
         description="הפרופיל שלך מוצג ללקוחות בחנות"
         actions={
-          <Link href="/dashboard/profile/edit">
-            <Button className="gap-2">
-              <Pencil className="w-4 h-4" />
-              עריכה
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            {hasValidPhone && (
+              <Link href={`/profile/${phoneDigits}`}>
+                <Button variant="outline" className="gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  צפייה בפרופיל
+                </Button>
+              </Link>
+            )}
+            <Link href="/dashboard/profile/edit">
+              <Button className="gap-2">
+                <Pencil className="w-4 h-4" />
+                עריכה
+              </Button>
+            </Link>
+          </div>
         }
       />
 
@@ -116,6 +140,83 @@ export default async function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">בקשות פתוחות</h2>
+        {myOpenRequests.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-slate-500">
+              אין לך בקשות פתוחות
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {myOpenRequests.map((req) => {
+              const pendingCount = req.items.filter((i) => i.status === "pending").length;
+              const approvedCount = req.items.filter((i) => i.status === "approved").length;
+              const rejectedCount = req.items.filter((i) => i.status === "rejected").length;
+              return (
+                <Card key={req.id}>
+                  <CardContent className="py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant={req.source === "public_store" ? "secondary" : "outline"}
+                        className="text-xs"
+                      >
+                        {req.source === "public_store" ? (
+                          <>
+                            <Store className="w-3 h-3 ml-1" />
+                            מהחנות
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-3 h-3 ml-1" />
+                            בקשה פתוחה
+                          </>
+                        )}
+                      </Badge>
+                      <span className="text-slate-600 text-sm">
+                        {req.department?.name} • {formatDateTime(req.createdAt)}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-sm text-slate-600">
+                      {pendingCount > 0 && (
+                        <span className="text-amber-600">ממתין: {pendingCount}</span>
+                      )}
+                      {approvedCount > 0 && (
+                        <span className={pendingCount > 0 ? "me-3" : ""}>
+                          <span className="text-emerald-600">אושר: {approvedCount}</span>
+                        </span>
+                      )}
+                      {rejectedCount > 0 && (
+                        <span className={pendingCount > 0 || approvedCount > 0 ? "me-3" : ""}>
+                          <span className="text-red-600">נדחה: {rejectedCount}</span>
+                        </span>
+                      )}
+                    </div>
+                    <ul className="mt-2 text-sm text-slate-700 list-disc list-inside">
+                      {req.items.map((item) => (
+                        <li key={item.id}>
+                          {item.itemName} x{item.quantity}
+                          {item.status === "pending" && (
+                            <span className="text-amber-600 text-xs me-1">(ממתין)</span>
+                          )}
+                          {item.status === "approved" && (
+                            <span className="text-emerald-600 text-xs me-1">(אושר)</span>
+                          )}
+                          {item.status === "rejected" && (
+                            <span className="text-red-600 text-xs me-1">(נדחה)</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

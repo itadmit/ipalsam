@@ -8,8 +8,11 @@ import {
   movements,
   signatures,
   auditLogs,
+  users,
+  handoverDepartments,
 } from "@/db/schema";
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { sendNewRequestEmails } from "@/lib/send-request-emails";
 import { auth, canManageDepartment } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { CreateRequestFormData, SessionUser } from "@/types";
@@ -297,6 +300,18 @@ export async function createRequestsBatch(
       await executeHandover(newRequest.id, session.user.id);
     }
   }
+
+  const deptIds = [...new Set(items.map((r) => r.departmentId))];
+  const handoverRows = await db.query.handoverDepartments.findMany({
+    where: inArray(handoverDepartments.departmentId, deptIds),
+    columns: { userId: true },
+  });
+  const deptCommanders = await db.query.users.findMany({
+    where: inArray(users.departmentId, deptIds),
+    columns: { id: true },
+  });
+  const approverIds = [...new Set([...handoverRows.map((h) => h.userId), ...deptCommanders.map((u) => u.id)])];
+  sendNewRequestEmails(created, session.user.id, approverIds).catch(() => {});
 
   revalidatePath("/dashboard/requests");
   revalidatePath("/dashboard/loans");

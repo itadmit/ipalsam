@@ -242,39 +242,39 @@ export function ProfileHeader({
                 </button>
               </div>
               <nav className="flex-1 p-4 flex flex-col gap-1 overflow-auto bg-white/95 backdrop-blur-md">
-                {handoverPhone && (
-                  <>
-                    <Link
-                      href={`/profile/${handoverPhone}`}
-                      onClick={closeMenu}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
-                    >
-                      <User className="w-5 h-5 text-slate-500 shrink-0" />
-                      פרופיל
-                    </Link>
-                    {showOpenRequestButton && (
-                      <Link
-                        href={`/profile/${handoverPhone}/open-request`}
-                        onClick={closeMenu}
-                        className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
-                      >
-                        <Send className="w-5 h-5 text-slate-500 shrink-0" />
-                        בקשה חדשה
-                      </Link>
-                    )}
-                    <Link
-                      href={`/profile/${handoverPhone}`}
-                      onClick={closeMenu}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
-                    >
-                      <Package className="w-5 h-5 text-slate-500 shrink-0" />
-                      השאלה חדשה
-                    </Link>
-                  </>
-                )}
+                <Link
+                  href={handoverPhone ? `/profile/${handoverPhone}` : "/profile"}
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
+                >
+                  <User className="w-5 h-5 text-slate-500 shrink-0" />
+                  פרופיל
+                </Link>
+                <Link
+                  href={handoverPhone ? `/profile/${handoverPhone}` : "/profile"}
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
+                >
+                  <Package className="w-5 h-5 text-slate-500 shrink-0" />
+                  השאלה חדשה
+                </Link>
+                <Link
+                  href={
+                    handoverPhone && showOpenRequestButton
+                      ? `/profile/${handoverPhone}/open-request`
+                      : handoverPhone
+                        ? `/profile/${handoverPhone}`
+                        : "/profile"
+                  }
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
+                >
+                  <Send className="w-5 h-5 text-slate-500 shrink-0" />
+                  בקשת ציוד
+                </Link>
                 <Link
                   href="/about"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={closeMenu}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-slate-700"
                 >
                   <Info className="w-5 h-5 text-slate-500 shrink-0" />

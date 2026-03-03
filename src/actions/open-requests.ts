@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { eq, and, inArray, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { sendNewOpenRequestEmails } from "@/lib/send-request-emails";
 
 export interface OpenRequestItemInput {
   itemName: string;
@@ -111,6 +112,8 @@ export async function createOpenRequest(
     );
   }
 
+  sendNewOpenRequestEmails(newRequest.id, session?.user?.id || null, notifyUserIds).catch(() => {});
+
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/open-requests");
   return { success: true, id: newRequest.id };
@@ -173,14 +176,29 @@ export async function createOpenRequestFromPublicStore(
     where: eq(departments.id, departmentId),
     columns: { name: true },
   });
-  await db.insert(notifications).values({
-    userId: match.id,
-    type: "new_open_request",
-    title: "בקשה פתוחה חדשה",
-    body: `בקשה חדשה למחלקת ${dept?.name || "לוגיסטיקה"}`,
-    metadata: { openRequestId: newRequest.id },
+  const handoverUsers = await db.query.handoverDepartments.findMany({
+    where: eq(handoverDepartments.departmentId, departmentId),
+    columns: { userId: true },
   });
+  const deptCommanders = await db.query.users.findMany({
+    where: eq(users.departmentId, departmentId),
+    columns: { id: true },
+  });
+  const notifyUserIds = [...new Set([match.id, ...handoverUsers.map((h) => h.userId), ...deptCommanders.map((u) => u.id)])];
 
+  await db.insert(notifications).values(
+    notifyUserIds.map((userId) => ({
+      userId,
+      type: "new_open_request",
+      title: "בקשה פתוחה חדשה",
+      body: `בקשה חדשה למחלקת ${dept?.name || "לוגיסטיקה"}`,
+      metadata: { openRequestId: newRequest.id },
+    }))
+  );
+
+  sendNewOpenRequestEmails(newRequest.id, requesterId, notifyUserIds).catch(() => {});
+
+  revalidatePath("/dashboard");
   revalidatePath("/dashboard/open-requests");
   return { success: true, id: newRequest.id };
 }

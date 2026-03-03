@@ -1,0 +1,141 @@
+"use server";
+
+import { db } from "@/db";
+import { requests, users, departments, openRequests } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
+import { sendEmail } from "./email";
+import { newRequestEmail, newOpenRequestEmail } from "./email-templates";
+
+export async function sendNewRequestEmails(
+  requestIds: string[],
+  requesterId: string,
+  approverUserIds: string[]
+) {
+  if (requestIds.length === 0) return;
+
+  const reqs = await db.query.requests.findMany({
+    where: inArray(requests.id, requestIds),
+    with: {
+      itemType: { columns: { name: true } },
+      department: { columns: { name: true } },
+    },
+  });
+
+  const requester = await db.query.users.findFirst({
+    where: eq(users.id, requesterId),
+    columns: { email: true, firstName: true, lastName: true },
+  });
+
+  const itemsByDept = new Map<string, { name: string; quantity: number }[]>();
+  for (const r of reqs) {
+    if (!r.itemType || !r.department) continue;
+    const key = r.departmentId;
+    const list = itemsByDept.get(key) || [];
+    const existing = list.find((i) => i.name === r.itemType!.name);
+    if (existing) existing.quantity += r.quantity;
+    else list.push({ name: r.itemType.name, quantity: r.quantity });
+    itemsByDept.set(key, list);
+  }
+
+  const allItems = Array.from(itemsByDept.values()).flat();
+  const deptNames = [...new Set(reqs.map((r) => r.department?.name).filter(Boolean))];
+  const departmentName = deptNames.join(", ") || "לוגיסטיקה";
+
+  if (requester?.email && allItems.length > 0) {
+    const html = newRequestEmail({
+      recipientName: `${requester.firstName} ${requester.lastName}`.trim(),
+      departmentName,
+      items: allItems,
+      recipientRole: "requester",
+    });
+    await sendEmail({
+      to: requester.email,
+      subject: "הבקשה שלך הוגשה – iPalsam",
+      html,
+    });
+  }
+
+  const approvers = await db.query.users.findMany({
+    where: inArray(users.id, approverUserIds),
+    columns: { id: true, email: true, firstName: true, lastName: true, departmentId: true },
+  });
+
+  for (const approver of approvers) {
+    if (!approver.email) continue;
+    const deptItems = approver.departmentId
+      ? itemsByDept.get(approver.departmentId) || allItems
+      : allItems;
+    if (deptItems.length === 0) continue;
+    const dept = await db.query.departments.findFirst({
+      where: eq(departments.id, approver.departmentId!),
+      columns: { name: true },
+    });
+    const html = newRequestEmail({
+      recipientName: `${approver.firstName} ${approver.lastName}`.trim(),
+      departmentName: dept?.name || departmentName,
+      items: deptItems,
+      recipientRole: "approver",
+    });
+    await sendEmail({
+      to: approver.email,
+      subject: "בקשה חדשה להשאלת ציוד – iPalsam",
+      html,
+    });
+  }
+}
+
+export async function sendNewOpenRequestEmails(
+  openRequestId: string,
+  requesterId: string | null,
+  approverUserIds: string[]
+) {
+  const openReq = await db.query.openRequests.findFirst({
+    where: eq(openRequests.id, openRequestId),
+    with: { items: true, department: { columns: { name: true } } },
+  });
+
+  if (!openReq?.items?.length) return;
+
+  const items = openReq.items.map((i) => ({ name: i.itemName, quantity: i.quantity }));
+  const departmentName = openReq.department?.name || "לוגיסטיקה";
+
+  if (requesterId) {
+    const requester = await db.query.users.findFirst({
+      where: eq(users.id, requesterId),
+      columns: { email: true, firstName: true, lastName: true },
+    });
+    if (requester?.email) {
+      const html = newOpenRequestEmail({
+        recipientName: `${requester.firstName} ${requester.lastName}`.trim(),
+        departmentName,
+        items,
+        recipientRole: "requester",
+      });
+      await sendEmail({
+        to: requester.email,
+        subject: "בקשת הציוד שלך הוגשה – iPalsam",
+        html,
+      });
+    }
+  }
+
+  const approvers = await db.query.users.findMany({
+    where: inArray(users.id, approverUserIds),
+    columns: { email: true, firstName: true, lastName: true },
+  });
+
+  for (const approver of approvers) {
+    if (!approver.email) continue;
+    const html = newOpenRequestEmail({
+      recipientName: `${approver.firstName} ${approver.lastName}`.trim(),
+      departmentName,
+      items,
+      recipientRole: "approver",
+    });
+    await sendEmail({
+      to: approver.email,
+      subject: "בקשה פתוחה חדשה – iPalsam",
+      html,
+    });
+  }
+}
