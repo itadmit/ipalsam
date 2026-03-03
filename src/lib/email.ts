@@ -32,6 +32,9 @@ export async function sendEmail(options: {
       subject: options.subject,
       html: options.html,
       text: options.text,
+      headers: {
+        "Content-Language": "he",
+      },
     });
     return true;
   } catch {

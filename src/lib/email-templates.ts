@@ -1,15 +1,16 @@
+const RTL = "direction: rtl; text-align: right;";
 const STYLES = {
-  wrapper: "font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; padding: 24px; margin: 0;",
+  wrapper: `font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; padding: 24px; margin: 0; ${RTL}`,
   card: "max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);",
-  header: "background: #000000; color: #ffffff; padding: 24px; text-align: center;",
+  header: `background: #000000; color: #ffffff; padding: 24px; text-align: center; ${RTL}`,
   logo: "font-size: 24px; font-weight: 700; letter-spacing: 0.5px;",
-  body: "padding: 32px 24px; color: #1a1a1a; line-height: 1.6;",
-  title: "font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #000000;",
-  text: "font-size: 15px; margin: 0 0 12px; color: #333333;",
-  table: "width: 100%; border-collapse: collapse; margin: 20px 0;",
+  body: `padding: 32px 24px; color: #1a1a1a; line-height: 1.6; ${RTL}`,
+  title: `font-size: 18px; font-weight: 600; margin: 0 0 16px; color: #000000; ${RTL}`,
+  text: `font-size: 15px; margin: 0 0 12px; color: #333333; ${RTL}`,
+  table: `width: 100%; border-collapse: collapse; margin: 20px 0; direction: rtl;`,
   th: "background: #f8f8f8; padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: #000000; border-bottom: 1px solid #e5e5e5;",
-  td: "padding: 12px 16px; border-bottom: 1px solid #e5e5e5; font-size: 14px; color: #333333;",
-  footer: "padding: 20px 24px; background: #f8f8f8; border-top: 1px solid #e5e5e5; font-size: 12px; color: #666666; text-align: center;",
+  td: "padding: 12px 16px; border-bottom: 1px solid #e5e5e5; font-size: 14px; color: #333333; text-align: right;",
+  footer: `padding: 20px 24px; background: #f8f8f8; border-top: 1px solid #e5e5e5; font-size: 12px; color: #666666; text-align: center; ${RTL}`,
 };
 
 function baseTemplate(content: string) {
@@ -19,10 +20,12 @@ function baseTemplate(content: string) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <style>body,div,table,td,th,p{direction:rtl;text-align:right;}</style>
 </head>
-<body style="${STYLES.wrapper}">
-  <div style="${STYLES.card}">
-    <div style="${STYLES.header}">
+<body dir="rtl" style="${STYLES.wrapper}">
+  <div dir="rtl" style="${STYLES.card}">
+    <div dir="rtl" style="${STYLES.header}">
       <span style="${STYLES.logo}">iPalsam</span>
     </div>
     ${content}
@@ -48,13 +51,13 @@ export function newRequestEmail(options: {
     .join("");
 
   const bodyContent = `
-    <div style="${STYLES.body}">
+    <div dir="rtl" style="${STYLES.body}">
       <p style="${STYLES.title}">שלום ${recipientName},</p>
       <p style="${STYLES.text}">
         ${isRequester ? "הבקשה שלך הוגשה בהצלחה." : "התקבלה בקשה חדשה להשאלת ציוד."}
       </p>
       <p style="${STYLES.text}">מחלקה: <strong>${departmentName}</strong></p>
-      <table style="${STYLES.table}">
+      <table dir="rtl" style="${STYLES.table}">
         <thead>
           <tr>
             <th style="${STYLES.th}">פריט</th>
@@ -67,7 +70,7 @@ export function newRequestEmail(options: {
         ${isRequester ? "תוכל לעקוב אחר סטטוס הבקשה בדשבורד." : "נא לאשר או לדחות את הבקשה במערכת."}
       </p>
     </div>
-    <div style="${STYLES.footer}">
+    <div dir="rtl" style="${STYLES.footer}">
       iPalsam – ניהול ציוד בבסיס צבאי
     </div>`;
 
@@ -92,13 +95,13 @@ export function newOpenRequestEmail(options: {
     .join("");
 
   const bodyContent = `
-    <div style="${STYLES.body}">
+    <div dir="rtl" style="${STYLES.body}">
       <p style="${STYLES.title}">שלום ${recipientName},</p>
       <p style="${STYLES.text}">
         ${isRequester ? "בקשת הציוד שלך הוגשה בהצלחה." : "התקבלה בקשה פתוחה חדשה (בקשה מספק)."}
       </p>
       <p style="${STYLES.text}">מחלקה: <strong>${departmentName}</strong></p>
-      <table style="${STYLES.table}">
+      <table dir="rtl" style="${STYLES.table}">
         <thead>
           <tr>
             <th style="${STYLES.th}">פריט</th>
@@ -111,7 +114,7 @@ export function newOpenRequestEmail(options: {
         ${isRequester ? "תוכל לעקוב אחר סטטוס הבקשה בדשבורד." : "נא לאשר או לדחות כל פריט במערכת."}
       </p>
     </div>
-    <div style="${STYLES.footer}">
+    <div dir="rtl" style="${STYLES.footer}">
       iPalsam – ניהול ציוד בבסיס צבאי
     </div>`;
 
