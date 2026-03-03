@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { createOpenRequestFromPublicStore } from "@/actions/open-requests";
 import { identifyOrCreateSoldier, searchSoldiersByPhone } from "@/actions/soldier-request";
-import { Package, Plus, Trash2, Send, User } from "lucide-react";
+import { Package, Plus, Trash2, Send, User, Check } from "lucide-react";
 
 interface PublicOpenRequestFormProps {
   departmentId: string;
@@ -40,8 +40,8 @@ export function PublicOpenRequestForm({
     { id: string; phone: string; name: string; role?: string }[]
   >([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [userSelected, setUserSelected] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const selectingRef = useRef(false);
   const [rows, setRows] = useState<ItemRow[]>([
     { id: generateId(), itemName: "", quantity: 1, notes: "" },
   ]);
@@ -61,7 +61,7 @@ export function PublicOpenRequestForm({
     );
   };
 
-  const searchPhone = useCallback(async (value: string) => {
+  const searchPhone = useCallback(async (value: string, skipOpenDropdown = false) => {
     if (value.replace(/\D/g, "").length < 2) {
       setPhoneMatches([]);
       setShowDropdown(false);
@@ -71,24 +71,23 @@ export function PublicOpenRequestForm({
       const result = await searchSoldiersByPhone(value);
       const matches = "matches" in result ? result.matches : [];
       setPhoneMatches(matches);
-      if (!selectingRef.current) setShowDropdown(true);
+      if (!skipOpenDropdown) setShowDropdown(true);
     } catch {
       setPhoneMatches([]);
     }
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => searchPhone(phone), 150);
+    const t = setTimeout(() => searchPhone(phone, userSelected), 150);
     return () => clearTimeout(t);
-  }, [phone, searchPhone]);
+  }, [phone, searchPhone, userSelected]);
 
   const selectMatch = useCallback((match: { id: string; phone: string; name: string }) => {
-    selectingRef.current = true;
     setPhone(match.phone);
     setFullName(match.name);
     setShowDropdown(false);
     setPhoneMatches([]);
-    selectingRef.current = false;
+    setUserSelected(true);
   }, []);
 
   useEffect(() => {
@@ -240,14 +239,21 @@ export function PublicOpenRequestForm({
                   onChange={(e) => {
                     setPhone(e.target.value);
                     setFullName("");
+                    setUserSelected(false);
                   }}
                   onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                  onFocus={() => phone.replace(/\D/g, "").length >= 2 && setShowDropdown(true)}
+                  onFocus={() => !userSelected && phone.replace(/\D/g, "").length >= 2 && setShowDropdown(true)}
                   placeholder="הזן טלפון"
                   dir="ltr"
                   required
                 />
-                {showDropdown && phone.replace(/\D/g, "").length >= 2 && (
+                {userSelected && (
+                  <div className="mt-2 flex items-center gap-2 text-emerald-600 text-sm">
+                    <Check className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">המבקש זוהה</span>
+                  </div>
+                )}
+                {showDropdown && !userSelected && phone.replace(/\D/g, "").length >= 2 && (
                   <div className="absolute top-full left-0 right-0 mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-48 overflow-auto">
                     {phoneMatches.length > 0 ? (
                       phoneMatches.map((m) => (
