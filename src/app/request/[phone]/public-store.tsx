@@ -114,7 +114,7 @@ export function PublicStore({
                       className="gap-1.5"
                     >
                       <Plus className="w-4 h-4" />
-                      הוסף
+                      הוסף לסל
                     </Button>
                   </div>
                 ))

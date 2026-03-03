@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { createOpenRequestFromPublicStore } from "@/actions/open-requests";
 import { identifyOrCreateSoldier, searchSoldiersByPhone } from "@/actions/soldier-request";
-import { Package, Plus, Trash2, Send, User, Check } from "lucide-react";
+import { Package, Plus, Minus, Trash2, Send, User, Check } from "lucide-react";
 
 interface PublicOpenRequestFormProps {
   departmentId: string;
@@ -246,6 +246,7 @@ export function PublicOpenRequestForm({
                   placeholder="הזן טלפון"
                   dir="ltr"
                   required
+                  className="text-base"
                 />
                 {userSelected && (
                   <div className="mt-2 flex items-center gap-2 text-emerald-600 text-sm">
@@ -269,69 +270,100 @@ export function PublicOpenRequestForm({
                       ))
                     ) : (
                       <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                        לא נמצאו תוצאות – הזן שם מלא ליצירת משתמש
+                        לא נמצאו תוצאות – הזן שם המבקש ליצירת משתמש
                       </div>
                     )}
                   </div>
                 )}
               </div>
               <Input
-                label="שם מלא"
+                label="שם המבקש"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="שם מלא"
+                placeholder="שם המבקש"
                 required
+                className="text-base"
               />
             </div>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 space-y-3">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-slate-700">פריטים</label>
-              <Button type="button" variant="outline" size="sm" onClick={addRow} className="gap-1.5 h-8">
-                <Plus className="w-4 h-4" />
-                הוסף פריט
-              </Button>
-            </div>
+            <label className="text-sm font-medium text-slate-700 block mb-3">פריטים</label>
             <div className="space-y-3">
               {rows.map((row) => (
-                <div key={row.id} className="space-y-2 p-3 rounded-lg bg-white border border-slate-100">
-                  <div className="flex gap-2 items-center">
+                <div key={row.id} className="space-y-2 p-3 rounded-lg bg-white border border-slate-100 relative">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeRow(row.id)}
+                    disabled={rows.length <= 1}
+                    className="absolute top-2 left-2 shrink-0 text-slate-400 hover:text-red-500 z-10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                  <div className="space-y-2 pl-10">
                     <Input
+                      label="שם פריט"
                       placeholder="שם הפריט"
                       value={row.itemName}
                       onChange={(e) => updateRow(row.id, "itemName", e.target.value)}
-                      className="flex-1 min-w-0"
+                      className="text-base"
                     />
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="כמות"
-                      value={row.quantity || ""}
-                      onChange={(e) => updateRow(row.id, "quantity", parseInt(e.target.value) || 1)}
-                      className="w-14 shrink-0"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeRow(row.id)}
-                      disabled={rows.length <= 1}
-                      className="shrink-0 text-slate-400 hover:text-red-500"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <textarea
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">כמות</label>
+                      <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateRow(row.id, "quantity", Math.max(1, (row.quantity || 1) - 1))}
+                          className="shrink-0 h-11 w-11 rounded-none text-slate-600 hover:bg-slate-100"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </Button>
+                        <input
+                          type="number"
+                          min={1}
+                          value={row.quantity || ""}
+                          onChange={(e) => updateRow(row.id, "quantity", Math.max(1, parseInt(e.target.value) || 1))}
+                          className="flex-1 min-w-0 h-11 text-center text-base font-medium border-0 bg-transparent focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => updateRow(row.id, "quantity", (row.quantity || 1) + 1)}
+                          className="shrink-0 h-11 w-11 rounded-none text-slate-600 hover:bg-slate-100"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">הערות</label>
+                      <textarea
                     placeholder="הערות"
                     value={row.notes}
                     onChange={(e) => updateRow(row.id, "notes", e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
                   />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addRow}
+              className="w-full gap-1.5 h-10 border-dashed border-2 text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            >
+              <Plus className="w-4 h-4" />
+              הוסף פריט
+            </Button>
           </div>
 
           <Button type="submit" className="w-full h-11" size="lg" loading={loading} disabled={success}>
