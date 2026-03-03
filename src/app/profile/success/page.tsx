@@ -2,7 +2,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
 
-export default function ProfileSuccessPage() {
+export default async function ProfileSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const { from } = await searchParams;
+  const phoneDigits = from ? from.replace(/\D/g, "").slice(-10) : "";
+  const backToStore = phoneDigits.length >= 9 ? `/profile/${phoneDigits}` : "/profile";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/30 flex items-center justify-center p-4">
       <div className="text-center max-w-md">
@@ -13,7 +21,7 @@ export default function ProfileSuccessPage() {
         <p className="text-slate-500 mb-8">
           ההשאלה ממתינה לאישור. תקבל עדכון כשתאושר.
         </p>
-        <Link href="/profile">
+        <Link href={backToStore}>
           <Button variant="outline">השאלה נוספת</Button>
         </Link>
       </div>
