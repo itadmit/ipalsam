@@ -3,13 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { createOpenRequestFromPublicStore } from "@/actions/open-requests";
 import { identifyOrCreateSoldier, searchSoldiersByPhone } from "@/actions/soldier-request";
 import { Package, Plus, Trash2, Send, User } from "lucide-react";
@@ -205,19 +199,22 @@ export function PublicOpenRequestForm({
           שלח בקשה
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5" />
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        <div className="pt-8 pb-6 px-6 text-center border-b border-slate-100">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+              <Package className="w-9 h-9 text-slate-500" />
+            </div>
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900">
             בקשה פתוחה – {storeName}
-          </DialogTitle>
-        </DialogHeader>
+          </h2>
+          <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
+            הזמן ציוד מהספק. {storeName} יקבל התראה ויוכל לאשר או לדחות כל פריט.
+          </p>
+        </div>
 
-        <p className="text-sm text-slate-600">
-          הזמן ציוד מהספק. {storeName} יקבל התראה ויוכל לאשר או לדחות כל פריט.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
               {error}
@@ -229,9 +226,9 @@ export function PublicOpenRequestForm({
             </div>
           )}
 
-          <div>
-            <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
-              <User className="w-4 h-4" />
+          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <h4 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
+              <User className="w-4 h-4 text-slate-500" />
               פרטי המבקש
             </h4>
             <div className="space-y-3">
@@ -282,17 +279,17 @@ export function PublicOpenRequestForm({
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+            <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium text-slate-700">פריטים</label>
-              <Button type="button" variant="ghost" size="sm" onClick={addRow} className="gap-1">
+              <Button type="button" variant="outline" size="sm" onClick={addRow} className="gap-1.5 h-8">
                 <Plus className="w-4 h-4" />
-                הוסף
+                הוסף פריט
               </Button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {rows.map((row) => (
-                <div key={row.id} className="flex gap-2 items-start">
+                <div key={row.id} className="flex gap-2 items-start p-3 rounded-lg bg-white border border-slate-100">
                   <Input
                     placeholder="שם הפריט"
                     value={row.itemName}
@@ -319,16 +316,17 @@ export function PublicOpenRequestForm({
                     size="icon"
                     onClick={() => removeRow(row.id)}
                     disabled={rows.length <= 1}
+                    className="shrink-0 text-slate-400 hover:text-red-500"
                   >
-                    <Trash2 className="w-4 h-4 text-red-500" />
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               ))}
             </div>
           </div>
 
-          <Button type="submit" className="w-full" loading={loading} disabled={success}>
-            שלח
+          <Button type="submit" className="w-full h-11" size="lg" loading={loading} disabled={success}>
+            שלח בקשה
           </Button>
         </form>
       </DialogContent>

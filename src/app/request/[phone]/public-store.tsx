@@ -88,7 +88,13 @@ export function PublicStore({
           <CardContent className="space-y-4">
             <div className="space-y-2">
               {items.length === 0 ? (
-                <p className="text-slate-500 text-center py-6">אין פריטים במלאי</p>
+                <div className="text-center py-8">
+                  <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                    <Package className="w-7 h-7 text-slate-400" />
+                  </div>
+                  <p className="text-slate-500 font-medium">אין פריטים במלאי</p>
+                  <p className="text-sm text-slate-400 mt-1">בקש ציוד מהספק באמצעות הבקשה הפתוחה</p>
+                </div>
               ) : (
                 items.map((item) => (
                   <div
