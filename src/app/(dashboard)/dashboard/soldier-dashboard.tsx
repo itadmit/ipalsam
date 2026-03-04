@@ -12,44 +12,66 @@ import {
   Plus,
   History,
   CheckCircle,
+  ChevronLeft,
 } from "lucide-react";
 import { QuickRequestCard } from "./quick-request-card";
 import { OpenRequestCard } from "./open-request-card";
 import type { SessionUser } from "@/types";
-import { getStatusColor, getStatusLabel } from "@/lib/utils";
+import { getStatusColor, getStatusLabel, formatDateTime, formatDate } from "@/lib/utils";
+import { db } from "@/db";
+import { requests } from "@/db/schema";
+import { eq, desc, and, inArray } from "drizzle-orm";
 
 interface SoldierDashboardProps {
   user: SessionUser;
 }
 
-async function MyRequests() {
-  // TODO: Replace with actual data
-  const requests = [
-    {
-      id: "1",
-      item: "מכשיר קשר",
-      department: "קשר",
-      quantity: 1,
-      status: "submitted",
-      createdAt: "22/01/2026 09:30",
-    },
-    {
-      id: "2",
-      item: "סוללות",
-      department: "אפסנאות",
-      quantity: 5,
-      status: "approved",
-      createdAt: "21/01/2026 14:15",
-    },
-    {
-      id: "3",
-      item: "אוזניות",
-      department: "קשר",
-      quantity: 1,
-      status: "ready_for_pickup",
-      createdAt: "20/01/2026 11:00",
-    },
-  ];
+async function MyRequests({ userId }: { userId: string }) {
+  const activeStatuses = ["submitted", "approved", "ready_for_pickup", "rejected"] as const;
+  const userRequests = await db.query.requests.findMany({
+    where: and(
+      eq(requests.requesterId, userId),
+      inArray(requests.status, [...activeStatuses])
+    ),
+    with: { itemType: true, department: true, requester: true },
+    orderBy: [desc(requests.createdAt)],
+  });
+
+  const grouped = new Map<string, (typeof userRequests)[0][]>();
+  for (const r of userRequests) {
+    const key = r.requestGroupId ?? r.id;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(r);
+  }
+  const displayRequests = Array.from(grouped.entries())
+    .map(([key, items]) => {
+      const first = items[0];
+      const recipientName =
+        first.recipientName ||
+        (first.requester
+          ? `${first.requester.firstName || ""} ${first.requester.lastName || ""}`.trim()
+          : "") ||
+        "-";
+      const recipientPhone = first.recipientPhone || first.requester?.phone || "-";
+      return {
+        id: key,
+        firstId: first.id,
+        recipientName,
+        recipientPhone,
+        reqs: items.map((r) => ({
+          id: r.id,
+          itemType: r.itemType,
+          quantity: r.quantity,
+        })),
+        departmentName: first.department?.name || "",
+        urgency: first.urgency,
+        status: first.status,
+        createdAt: formatDateTime(first.createdAt),
+        notes: first.notes,
+        rejectionReason: first.rejectionReason,
+      };
+    })
+    .slice(0, 5);
 
   return (
     <Card>
@@ -66,37 +88,54 @@ async function MyRequests() {
         </Link>
       </CardHeader>
       <CardContent>
-        {requests.length === 0 ? (
+        {displayRequests.length === 0 ? (
           <EmptyState
             icon={FileText}
             title="אין השאלות פעילות"
             description="לחץ על 'השאלה חדשה' כדי להגיש השאלה לציוד"
           />
         ) : (
-          <div className="space-y-3">
-            {requests.map((request) => (
+          <div className="space-y-4">
+            {displayRequests.map((request) => (
               <Link
                 key={request.id}
-                href={`/dashboard/requests/${request.id}`}
-                className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-emerald-200 hover:bg-slate-50 transition-colors"
+                href={`/dashboard/requests/${request.firstId}`}
+                className="block w-full text-right p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-200 hover:bg-slate-50/50 active:scale-[0.99] transition-all cursor-pointer shadow-sm"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                    <Package className="w-5 h-5 text-slate-500" />
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                    <Package className="w-6 h-6 text-emerald-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {request.item}
-                      {request.quantity > 1 && ` (${request.quantity} יח')`}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-900 truncate">{request.recipientName}</p>
+                    <p className="text-sm text-slate-500 truncate" dir="ltr">
+                      {request.recipientPhone}
                     </p>
-                    <p className="text-sm text-slate-500">
-                      {request.department} • {request.createdAt}
+                    <p className="text-sm text-slate-600 mt-1">
+                      {request.reqs
+                        .map((r) => `${r.itemType?.name || ""}${r.quantity > 1 ? ` (${r.quantity})` : ""}`)
+                        .join(" • ")}
                     </p>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <Badge
+                        variant={request.urgency === "immediate" ? "destructive" : "info"}
+                        className="text-xs"
+                      >
+                        {request.urgency === "immediate" ? "מיידי" : "מתוזמן"}
+                      </Badge>
+                      <Badge className={`${getStatusColor(request.status)} text-xs`}>
+                        {getStatusLabel(request.status)}
+                      </Badge>
+                      <span className="text-xs text-slate-400">{request.createdAt}</span>
+                    </div>
+                    {(request.notes || request.rejectionReason) && (
+                      <p className="text-xs text-slate-500 mt-2 line-clamp-2">
+                        {request.rejectionReason || request.notes}
+                      </p>
+                    )}
                   </div>
+                  <ChevronLeft className="w-5 h-5 text-slate-400 shrink-0" />
                 </div>
-                <Badge className={getStatusColor(request.status)}>
-                  {getStatusLabel(request.status)}
-                </Badge>
               </Link>
             ))}
           </div>
@@ -106,26 +145,33 @@ async function MyRequests() {
   );
 }
 
-async function MyLoans() {
-  // TODO: Replace with actual data
-  const loans = [
-    {
-      id: "1",
-      item: "מכשיר קשר #K-1234",
-      department: "קשר",
-      borrowedAt: "20/01/2026",
-      dueDate: "27/01/2026",
-      daysLeft: 5,
-    },
-    {
-      id: "2",
-      item: "מחשב נייד #L-5678",
-      department: "לוגיסטיקה",
-      borrowedAt: "15/01/2026",
-      dueDate: "22/01/2026",
-      daysLeft: 0,
-    },
-  ];
+async function MyLoans({ userId }: { userId: string }) {
+  const rawLoans = await db.query.requests.findMany({
+    where: and(
+      eq(requests.requesterId, userId),
+      eq(requests.status, "handed_over")
+    ),
+    with: { itemType: true, itemUnit: true, department: true },
+    orderBy: (requests, { asc }) => [asc(requests.scheduledReturnAt)],
+  });
+
+  const now = new Date();
+  const loans = rawLoans.map((r) => {
+    const dueDate = r.scheduledReturnAt || new Date();
+    const diffTime = dueDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const itemLabel = r.itemUnit?.serialNumber
+      ? `${r.itemType?.name || "פריט"} #${r.itemUnit.serialNumber}`
+      : `${r.itemType?.name || "פריט"}${r.quantity > 1 ? ` (${r.quantity} יח')` : ""}`;
+    return {
+      id: r.id,
+      item: itemLabel,
+      department: r.department?.name || "",
+      borrowedAt: r.handedOverAt ? formatDate(r.handedOverAt) : formatDate(r.createdAt),
+      dueDate: formatDate(r.scheduledReturnAt),
+      daysLeft,
+    };
+  });
 
   return (
     <Card>
@@ -179,34 +225,52 @@ async function MyLoans() {
   );
 }
 
-async function RecentActivity() {
-  // TODO: Replace with actual data
-  const activities = [
-    {
-      id: "1",
-      action: "השאלת מכשיר קשר #K-1234",
-      date: "20/01/2026 10:00",
-      type: "borrow",
-    },
-    {
-      id: "2",
-      action: "החזרת סוללות (10 יח')",
-      date: "18/01/2026 14:30",
-      type: "return",
-    },
-    {
-      id: "3",
-      action: "השאלה לאוזניות אושרה",
-      date: "17/01/2026 09:15",
-      type: "approved",
-    },
-    {
-      id: "4",
-      action: "השאלת מחשב נייד #L-5678",
-      date: "15/01/2026 11:00",
-      type: "borrow",
-    },
-  ];
+async function RecentActivity({ userId }: { userId: string }) {
+  const userRequests = await db.query.requests.findMany({
+    where: eq(requests.requesterId, userId),
+    with: { itemType: true, itemUnit: true },
+    orderBy: [desc(requests.createdAt)],
+  });
+
+  type Activity = { id: string; action: string; date: string; type: "borrow" | "return" | "approved"; ts: Date };
+  const activities: Activity[] = [];
+
+  for (const r of userRequests) {
+    const itemLabel = r.itemUnit?.serialNumber
+      ? `${r.itemType?.name || "פריט"} #${r.itemUnit.serialNumber}`
+      : `${r.itemType?.name || "פריט"}${r.quantity > 1 ? ` (${r.quantity} יח')` : ""}`;
+
+    if (r.returnedAt) {
+      activities.push({
+        id: `${r.id}-return`,
+        action: `החזרת ${itemLabel}`,
+        date: formatDateTime(r.returnedAt),
+        type: "return",
+        ts: r.returnedAt,
+      });
+    }
+    if (r.handedOverAt) {
+      activities.push({
+        id: `${r.id}-handover`,
+        action: `השאלת ${itemLabel}`,
+        date: formatDateTime(r.handedOverAt),
+        type: "borrow",
+        ts: r.handedOverAt,
+      });
+    }
+    if (r.approvedAt) {
+      activities.push({
+        id: `${r.id}-approved`,
+        action: `השאלה ל${itemLabel} אושרה`,
+        date: formatDateTime(r.approvedAt),
+        type: "approved",
+        ts: r.approvedAt,
+      });
+    }
+  }
+
+  activities.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+  const displayActivities = activities.slice(0, 5);
 
   return (
     <Card>
@@ -217,8 +281,15 @@ async function RecentActivity() {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {displayActivities.length === 0 ? (
+          <EmptyState
+            icon={History}
+            title="אין פעילות אחרונה"
+            description="פעולות ההשאלה וההחזרה שלך יופיעו כאן"
+          />
+        ) : (
         <div className="space-y-4">
-          {activities.map((activity) => (
+          {displayActivities.map((activity) => (
             <div key={activity.id} className="flex items-start gap-3">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
@@ -244,6 +315,7 @@ async function RecentActivity() {
             </div>
           ))}
         </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -280,7 +352,7 @@ export function SoldierDashboard({ user }: SoldierDashboardProps) {
               <div className="h-64 rounded-xl bg-slate-100 animate-pulse" />
             }
           >
-            <MyRequests />
+            <MyRequests userId={user.id} />
           </Suspense>
 
           <Suspense
@@ -288,7 +360,7 @@ export function SoldierDashboard({ user }: SoldierDashboardProps) {
               <div className="h-64 rounded-xl bg-slate-100 animate-pulse" />
             }
           >
-            <MyLoans />
+            <MyLoans userId={user.id} />
           </Suspense>
         </div>
 
@@ -297,7 +369,7 @@ export function SoldierDashboard({ user }: SoldierDashboardProps) {
             <div className="h-64 rounded-xl bg-slate-100 animate-pulse" />
           }
         >
-          <RecentActivity />
+          <RecentActivity userId={user.id} />
         </Suspense>
       </div>
     </div>
