@@ -24,6 +24,7 @@ interface PublicStoreProps {
   handoverPhone: string;
   showOpenRequestButton?: boolean;
   profile: ProfileData;
+  sessionUser?: { id: string; phone: string; name: string } | null;
 }
 
 interface CartItem {
@@ -40,6 +41,7 @@ export function PublicStore({
   handoverPhone,
   showOpenRequestButton = false,
   profile,
+  sessionUser,
 }: PublicStoreProps) {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -185,6 +187,7 @@ export function PublicStore({
                   handoverPhone={handoverPhone}
                   storeName={storeName}
                   variant="inline"
+                  sessionUser={sessionUser}
                   onSuccess={(requestId, requestNumber) => setSuccessData({ requestId, requestNumber })}
                 />
               </CardContent>

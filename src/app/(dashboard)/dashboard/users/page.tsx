@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Plus, Users, Edit, UserCircle } from "lucide-react";
+import { ImpersonateButton } from "./impersonate-button";
 import { getRoleLabel, formatPhone } from "@/lib/utils";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -27,7 +28,7 @@ interface SearchParams {
   role?: string;
 }
 
-async function UsersTable({ searchParams, currentUser, canManage }: { searchParams: SearchParams; currentUser: SessionUser; canManage: boolean }) {
+async function UsersTable({ searchParams, currentUser, canManage, isSuperAdmin }: { searchParams: SearchParams; currentUser: SessionUser; canManage: boolean; isSuperAdmin: boolean }) {
   let allUsers = await db.query.users.findMany({
     with: {
       department: true,
@@ -128,6 +129,12 @@ async function UsersTable({ searchParams, currentUser, canManage }: { searchPara
                       <UserCircle className="w-4 h-4" />
                     </Button>
                   </Link>
+                  {isSuperAdmin && user.id !== currentUser.id && (
+                    <ImpersonateButton
+                      userId={user.id}
+                      userName={`${user.firstName} ${user.lastName}`}
+                    />
+                  )}
                   {canManage && (
                     <Link href={`/super-admin/users/${user.id}`} title="עריכה">
                       <Button variant="ghost" size="icon">
@@ -160,6 +167,7 @@ export default async function UsersPage({
 
   const params = await searchParams;
   const canManage = canAccessSuperAdmin(session.user.role as SessionUser["role"]);
+  const isSuperAdmin = session.user.role === "super_admin";
 
   return (
     <div>
@@ -194,7 +202,7 @@ export default async function UsersPage({
               </div>
             }
           >
-            <UsersTable searchParams={params} currentUser={session.user as SessionUser} canManage={canManage} />
+            <UsersTable searchParams={params} currentUser={session.user as SessionUser} canManage={canManage} isSuperAdmin={isSuperAdmin} />
           </Suspense>
         </CardContent>
       </Card>

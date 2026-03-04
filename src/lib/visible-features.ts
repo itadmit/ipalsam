@@ -64,3 +64,26 @@ export const FEATURE_TO_HREF: Record<VisibleFeatureKey, string> = {
 };
 
 export type VisibleFeatures = Partial<Record<VisibleFeatureKey, boolean>>;
+
+/** הרשאה איזה בקשות פתוחות המשתמש רואה */
+export const OPEN_REQUESTS_FILTER_OPTIONS = [
+  { value: "all", label: "הכל" },
+  { value: "pending_only", label: "רק ממתינות" },
+  { value: "processed_only", label: "רק שטופלו" },
+] as const;
+
+export type OpenRequestsFilterValue = (typeof OPEN_REQUESTS_FILTER_OPTIONS)[number]["value"];
+
+/** הרחבה לשמירת open-requests-filter + הגדרות פרופיל */
+export type ExtendedVisibleFeatures = VisibleFeatures & {
+  "open-requests-filter"?: OpenRequestsFilterValue;
+  /** חנות בפרופיל – ברירת מחדל: חיילים לא, מפקדים כן */
+  "profile-store"?: boolean;
+  /** בקשה פתוחה בפרופיל – ברירת מחדל: חיילים לא, מפקדים כן */
+  "profile-open-request"?: boolean;
+};
+
+/** ברירת מחדל לחנות ובקשה פתוחה בפרופיל לפי תפקיד */
+export function getProfileStoreOpenRequestDefault(role: string): { store: boolean; openRequest: boolean } {
+  return role === "soldier" ? { store: false, openRequest: false } : { store: true, openRequest: true };
+}

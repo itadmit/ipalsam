@@ -20,8 +20,8 @@ import { Plus, Package, Edit, Eye, FileSpreadsheet } from "lucide-react";
 import { FilterButton, ExportButton } from "./inventory-actions";
 import { SyncInventoryButton } from "./sync-inventory-button";
 import { db } from "@/db";
-import { itemTypes } from "@/db/schema";
-import { like, or } from "drizzle-orm";
+import { itemTypes, departments, soldierDepartments } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 
 interface SearchParams {
   q?: string;
@@ -31,8 +31,29 @@ interface SearchParams {
   page?: string;
 }
 
-async function InventoryTable({ searchParams }: { searchParams: SearchParams }) {
+async function InventoryTable({
+  searchParams,
+  departmentIds,
+}: {
+  searchParams: SearchParams;
+  departmentIds: string[] | null;
+}) {
+  // null = כל המחלקות (super_admin/hq), [] = אין גישה (חייל בלי מחלקות)
+  if (departmentIds !== null && departmentIds.length === 0) {
+    return (
+      <EmptyState
+        icon={Package}
+        title="אין גישה למלאי"
+        description="אין לך מחלקות משויכות. פנה למנהל כדי לקבל גישה."
+      />
+    );
+  }
+
+  const whereClause =
+    departmentIds === null ? undefined : inArray(itemTypes.departmentId, departmentIds);
+
   let items = await db.query.itemTypes.findMany({
+    where: whereClause,
     with: {
       department: true,
       category: true,
@@ -161,6 +182,29 @@ export default async function InventoryPage({
   if (!session?.user) redirect("/login");
 
   const params = await searchParams;
+  const { role, departmentId: userDeptId, id: userId } = session.user;
+
+  let departmentIds: string[] | null = null;
+  if (role === "super_admin" || role === "hq_commander") {
+    const allDepts = await db.query.departments.findMany({
+      where: eq(departments.isActive, true),
+      columns: { id: true },
+    });
+    departmentIds = allDepts.map((d) => d.id);
+  } else if (role === "dept_commander" && userDeptId) {
+    departmentIds = [userDeptId];
+  } else if (role === "soldier") {
+    const deptIds: string[] = [];
+    if (userDeptId) deptIds.push(userDeptId);
+    const soldierDepts = await db.query.soldierDepartments.findMany({
+      where: eq(soldierDepartments.userId, userId),
+      columns: { departmentId: true },
+    });
+    soldierDepts.forEach((d) => {
+      if (d.departmentId && !deptIds.includes(d.departmentId)) deptIds.push(d.departmentId);
+    });
+    departmentIds = deptIds;
+  }
 
   return (
     <div>
@@ -207,7 +251,7 @@ export default async function InventoryPage({
               </div>
             }
           >
-            <InventoryTable searchParams={params} />
+            <InventoryTable searchParams={params} departmentIds={departmentIds} />
           </Suspense>
         </CardContent>
       </Card>

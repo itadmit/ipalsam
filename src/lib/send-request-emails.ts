@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { requests, users, departments, openRequests, openRequestItems, systemSettings } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { sendEmail } from "./email";
-import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail, openRequestItemApprovedEmail } from "./email-templates";
+import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail, openRequestItemApprovedEmail, openRequestItemRejectedEmail } from "./email-templates";
 
 async function isNewRequestEmailsEnabled(): Promise<boolean> {
   const row = await db.query.systemSettings.findFirst({
@@ -246,6 +246,48 @@ export async function sendOpenRequestItemApprovedEmail(
   await sendEmail({
     to: requester.email,
     subject: `הפריט "${item.itemName}" אושר – iPalsam`,
+    html,
+  });
+}
+
+export async function sendOpenRequestItemRejectedEmail(
+  openRequestItemId: string,
+  rejectionReason?: string | null
+) {
+  if (!(await isNewRequestEmailsEnabled())) return;
+
+  const item = await db.query.openRequestItems.findFirst({
+    where: eq(openRequestItems.id, openRequestItemId),
+    with: {
+      openRequest: {
+        with: { department: { columns: { name: true } } },
+      },
+    },
+  });
+
+  if (!item || item.status !== "rejected" || !item.openRequest?.requesterId) return;
+
+  const requester = await db.query.users.findFirst({
+    where: eq(users.id, item.openRequest.requesterId),
+    columns: { email: true, firstName: true, lastName: true },
+  });
+
+  if (!requester?.email) return;
+
+  const departmentName = item.openRequest.department?.name || "לוגיסטיקה";
+  const reason = rejectionReason ?? item.rejectionReason ?? null;
+
+  const html = openRequestItemRejectedEmail({
+    recipientName: `${requester.firstName} ${requester.lastName}`.trim(),
+    itemName: item.itemName,
+    quantity: item.quantity,
+    departmentName,
+    rejectionReason: reason,
+  });
+
+  await sendEmail({
+    to: requester.email,
+    subject: `הפריט "${item.itemName}" נדחה – iPalsam`,
     html,
   });
 }

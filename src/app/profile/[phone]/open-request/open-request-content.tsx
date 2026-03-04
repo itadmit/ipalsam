@@ -12,6 +12,7 @@ interface OpenRequestPageContentProps {
   departmentId: string;
   handoverPhone: string;
   storeName: string;
+  sessionUser?: { id: string; phone: string; name: string } | null;
 }
 
 interface ItemRow {
@@ -29,13 +30,14 @@ export function OpenRequestPageContent({
   departmentId,
   handoverPhone,
   storeName,
+  sessionUser,
 }: OpenRequestPageContentProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState(sessionUser?.phone || "");
+  const [fullName, setFullName] = useState(sessionUser?.name || "");
   const [phoneMatches, setPhoneMatches] = useState<
     { id: string; phone: string; name: string; role?: string }[]
   >([]);
@@ -112,18 +114,18 @@ export function OpenRequestPageContent({
       setError("יש להוסיף לפחות פריט אחד");
       return;
     }
-    if (!phone.trim()) {
-      setError("יש להזין טלפון");
-      return;
-    }
-    if (!fullName.trim()) {
-      setError("יש להזין שם מלא");
-      return;
-    }
 
-    setLoading(true);
-    try {
-      let requesterId: string | null = null;
+    let requesterId: string | null = sessionUser?.id || null;
+
+    if (!requesterId) {
+      if (!phone.trim()) {
+        setError("יש להזין טלפון");
+        return;
+      }
+      if (!fullName.trim()) {
+        setError("יש להזין שם מלא");
+        return;
+      }
 
       const identifyFirst = await identifyOrCreateSoldier(phone);
       if ("userId" in identifyFirst && identifyFirst.userId) {
@@ -140,7 +142,6 @@ export function OpenRequestPageContent({
         });
         if ("error" in result) {
           setError(result.error || "");
-          setLoading(false);
           return;
         }
         if ("userId" in result && result.userId) {
@@ -148,16 +149,17 @@ export function OpenRequestPageContent({
         }
       } else if ("error" in identifyFirst) {
         setError(identifyFirst.error || "");
-        setLoading(false);
         return;
       }
 
       if (!requesterId) {
         setError("לא ניתן לזהות את המבקש. אנא נסה שוב");
-        setLoading(false);
         return;
       }
+    }
 
+    setLoading(true);
+    try {
       const result = await createOpenRequestFromPublicStore(
         departmentId,
         handoverPhone,

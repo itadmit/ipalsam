@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, User, Key, Shield } from "lucide-react";
 import { QuickRequestCardForUser } from "./quick-request-card";
+import { ResetPasswordButton } from "./reset-password-button";
+import { ImpersonateButton } from "@/app/(dashboard)/dashboard/users/impersonate-button";
 import { getRoleLabel, formatPhone, formatDate } from "@/lib/utils";
 import { EditUserForm } from "./edit-user-form";
 import { UserVisibleFeaturesForm } from "./user-visible-features-form";
@@ -17,6 +19,7 @@ import { db } from "@/db";
 import { users, departments, soldierDepartments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { SessionUser } from "@/types";
+import type { ExtendedVisibleFeatures } from "@/lib/visible-features";
 
 export default async function EditUserPage({
   params,
@@ -193,7 +196,8 @@ export default async function EditUserPage({
               <CardContent>
                 <UserVisibleFeaturesForm
                   userId={user.id}
-                  initialFeatures={(user.visibleFeatures as Record<string, boolean> | null) ?? null}
+                  userRole={user.role || "soldier"}
+                  initialFeatures={(user.visibleFeatures as ExtendedVisibleFeatures | null) ?? null}
                 />
               </CardContent>
             </Card>
@@ -207,9 +211,18 @@ export default async function EditUserPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full">
-                איפוס סיסמה
-              </Button>
+              {isSuperAdmin && (
+                <>
+                  <ResetPasswordButton userId={user.id} />
+                  {user.id !== session.user.id && (
+                    <ImpersonateButton
+                      userId={user.id}
+                      userName={`${user.firstName} ${user.lastName}`}
+                      compact={false}
+                    />
+                  )}
+                </>
+              )}
               {isSuperAdmin && (
                 <Button
                   variant="outline"

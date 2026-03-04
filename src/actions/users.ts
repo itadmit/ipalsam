@@ -7,7 +7,7 @@ import { hash } from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { CreateUserFormData } from "@/types";
-import type { VisibleFeatures } from "@/lib/visible-features";
+import type { ExtendedVisibleFeatures } from "@/lib/visible-features";
 
 export async function createUser(data: CreateUserFormData) {
   const session = await auth();
@@ -147,7 +147,7 @@ export async function updateUser(
   return { success: true };
 }
 
-export async function updateUserVisibleFeatures(userId: string, features: VisibleFeatures) {
+export async function updateUserVisibleFeatures(userId: string, features: ExtendedVisibleFeatures) {
   const session = await auth();
 
   if (!session?.user || session.user.role !== "super_admin") {

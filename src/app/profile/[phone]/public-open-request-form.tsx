@@ -12,6 +12,8 @@ interface PublicOpenRequestFormProps {
   departmentId: string;
   handoverPhone: string;
   storeName: string;
+  /** כשמחובר – משמש ישירות כ־requesterId, וממלא טלפון ושם */
+  sessionUser?: { id: string; phone: string; name: string } | null;
   /** inline = מוצג בעמוד הפרופיל כמו החנות, modal = נפתח בחלון */
   variant?: "inline" | "modal";
   /** קריאה כשהבקשה נשלחה – מאפשרת להציג מסך הצלחה */
@@ -33,6 +35,7 @@ export function PublicOpenRequestForm({
   departmentId,
   handoverPhone,
   storeName,
+  sessionUser,
   variant = "modal",
   onSuccess,
 }: PublicOpenRequestFormProps) {
@@ -40,8 +43,8 @@ export function PublicOpenRequestForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState(sessionUser?.phone || "");
+  const [fullName, setFullName] = useState(sessionUser?.name || "");
   const [phoneMatches, setPhoneMatches] = useState<
     { id: string; phone: string; name: string; role?: string }[]
   >([]);
@@ -118,18 +121,18 @@ export function PublicOpenRequestForm({
       setError("יש להוסיף לפחות פריט אחד");
       return;
     }
-    if (!phone.trim()) {
-      setError("יש להזין טלפון");
-      return;
-    }
-    if (!fullName.trim()) {
-      setError("יש להזין שם מלא");
-      return;
-    }
 
-    setLoading(true);
-    try {
-      let requesterId: string | null = null;
+    let requesterId: string | null = sessionUser?.id || null;
+
+    if (!requesterId) {
+      if (!phone.trim()) {
+        setError("יש להזין טלפון");
+        return;
+      }
+      if (!fullName.trim()) {
+        setError("יש להזין שם מלא");
+        return;
+      }
 
       const identifyFirst = await identifyOrCreateSoldier(phone);
       if ("userId" in identifyFirst && identifyFirst.userId) {
@@ -163,7 +166,10 @@ export function PublicOpenRequestForm({
         setLoading(false);
         return;
       }
+    }
 
+    setLoading(true);
+    try {
       const result = await createOpenRequestFromPublicStore(
         departmentId,
         handoverPhone,

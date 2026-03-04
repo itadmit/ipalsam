@@ -18,13 +18,20 @@ const STATUS_TABS = [
   { value: "processed", label: "טופלו" },
 ] as const;
 
-export function OpenRequestsToolbar() {
+type UserFilter = "all" | "pending_only" | "processed_only";
+
+interface OpenRequestsToolbarProps {
+  userFilter?: UserFilter;
+  effectiveStatus?: string;
+}
+
+export function OpenRequestsToolbar({ userFilter, effectiveStatus }: OpenRequestsToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const currentSort = searchParams.get("sort") || "date_desc";
-  const currentStatus = searchParams.get("status") || "";
+  const currentStatus = effectiveStatus ?? searchParams.get("status") ?? "";
 
   const updateParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -49,9 +56,14 @@ export function OpenRequestsToolbar() {
 
   return (
     <div className="flex flex-col sm:flex-row-reverse sm:items-center sm:justify-between gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
-      {/* לשוניות סטטוס – בצד ימין */}
+      {/* לשוניות סטטוס – בצד ימין (מוסתרות כשהמשתמש מוגבל) */}
       <div className="flex items-center gap-1 p-1 rounded-lg bg-white border border-slate-200 order-1 sm:order-2">
-        {STATUS_TABS.map((tab) => {
+        {(userFilter === "processed_only"
+          ? STATUS_TABS.filter((t) => t.value === "processed")
+          : userFilter === "pending_only"
+            ? STATUS_TABS.filter((t) => t.value === "pending")
+            : STATUS_TABS
+        ).map((tab) => {
           const isActive = currentStatus === tab.value;
           return (
             <button

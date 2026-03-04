@@ -59,11 +59,8 @@ export async function changePassword(
 export async function resetUserPassword(userId: string) {
   const session = await auth();
 
-  if (
-    !session?.user ||
-    (session.user.role !== "super_admin" && session.user.role !== "hq_commander")
-  ) {
-    return { error: "אין הרשאה" };
+  if (!session?.user || session.user.role !== "super_admin") {
+    return { error: "רק סופר אדמין יכול לאפס סיסמה" };
   }
 
   const user = await db.query.users.findFirst({
@@ -87,7 +84,38 @@ export async function resetUserPassword(userId: string) {
     .where(eq(users.id, userId));
 
   revalidatePath("/super-admin/users");
+  revalidatePath(`/super-admin/users/${userId}`);
 
   return { success: true };
+}
+
+/** מכין התחברות כמשתמש – מאפס סיסמה לטלפון ומחזיר את הטלפון. רק סופר אדמין. */
+export async function prepareImpersonate(userId: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "super_admin") {
+    return { error: "אין הרשאה" };
+  }
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { id: true, phone: true, isActive: true },
+  });
+
+  if (!user || !user.isActive) {
+    return { error: "משתמש לא נמצא או לא פעיל" };
+  }
+
+  const hashedPassword = await hash(user.phone, 12);
+  await db
+    .update(users)
+    .set({
+      password: hashedPassword,
+      mustChangePassword: true,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+
+  return { success: true, phone: user.phone };
 }
 

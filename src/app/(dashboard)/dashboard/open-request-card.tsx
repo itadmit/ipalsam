@@ -26,12 +26,23 @@ export async function OpenRequestCard({ userId }: OpenRequestCardProps) {
     if (d.departmentId && !deptIds.includes(d.departmentId)) deptIds.push(d.departmentId);
   });
 
-  if (deptIds.length === 0) return null;
+  const departmentsList = deptIds.length > 0
+    ? await db.query.departments.findMany({
+        where: eq(departments.isActive, true),
+        columns: { id: true, name: true },
+      })
+    : [];
 
-  const departmentsList = await db.query.departments.findMany({
-    where: eq(departments.isActive, true),
-    columns: { id: true, name: true },
-  });
+  if (deptIds.length === 0) {
+    return (
+      <Card className="border-amber-200 bg-amber-50/30">
+        <CardContent className="py-6 text-center text-slate-500 text-sm">
+          אין לך מחלקות משויכות. פנה למנהל כדי לקבל גישה ליצירת בקשות פתוחות.
+        </CardContent>
+      </Card>
+    );
+  }
+
   const availableDepts = departmentsList.filter((d) => deptIds.includes(d.id));
   if (availableDepts.length === 0) return null;
 

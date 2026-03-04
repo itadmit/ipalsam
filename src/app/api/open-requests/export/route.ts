@@ -71,7 +71,8 @@ export async function GET(req: NextRequest) {
     filtered = allRequests.filter((r) => r.items.some((i) => i.status === "pending"));
   } else if (status === "processed") {
     filtered = allRequests.filter((r) =>
-      r.items.every((i) => i.status === "approved" || i.status === "rejected")
+      r.items.every((i) => ["approved", "rejected", "deleted"].includes(i.status)) &&
+      r.items.some((i) => i.status !== "deleted")
     );
   }
 
@@ -134,7 +135,7 @@ export async function GET(req: NextRequest) {
       : req.requesterName || req.requesterPhone || "חנות";
     const sourceLabel = "בקשה פתוחה";
 
-    for (const item of req.items) {
+    for (const item of req.items.filter((i) => i.status !== "deleted")) {
       rows.push([
         req.createdAt.toISOString().slice(0, 16),
         requesterName,

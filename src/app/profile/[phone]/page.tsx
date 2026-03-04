@@ -22,6 +22,13 @@ export default async function RequestStorePage({
   ]);
 
   if ("error" in data) {
+    const userPhone = (session?.user?.phone || "").replace(/\D/g, "").slice(-10);
+    const isOwnProfile =
+      !!userPhone &&
+      (phoneDigits === userPhone || phoneDigits.endsWith(userPhone) || userPhone.endsWith(phoneDigits));
+    if (isOwnProfile && session?.user) {
+      redirect("/dashboard/profile");
+    }
     redirect(`/about?error=${encodeURIComponent(data.error || "שגיאה")}`);
   }
 
@@ -40,6 +47,14 @@ export default async function RequestStorePage({
   const userPhone = (session?.user?.phone || "").replace(/\D/g, "").slice(-10);
   const isOwner = !!userPhone && (phoneDigits === userPhone || phoneDigits.endsWith(userPhone) || userPhone.endsWith(phoneDigits));
 
+  const sessionUser = session?.user?.id
+    ? {
+        id: session.user.id,
+        phone: (session.user.phone || "").replace(/\D/g, "").slice(-10),
+        name: `${session.user.firstName || ""} ${session.user.lastName || ""}`.trim(),
+      }
+    : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/30">
       <ProfileHeader
@@ -56,6 +71,7 @@ export default async function RequestStorePage({
           handoverPhone={data.handoverPhone || phoneDigits}
           showOpenRequestButton={data.showOpenRequestButton}
           profile={profile}
+          sessionUser={sessionUser}
         />
       </Suspense>
     </div>

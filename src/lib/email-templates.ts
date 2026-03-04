@@ -205,6 +205,32 @@ export function openRequestItemApprovedEmail(options: {
   return baseTemplate(bodyContent);
 }
 
+export function openRequestItemRejectedEmail(options: {
+  recipientName: string;
+  itemName: string;
+  quantity: number;
+  departmentName: string;
+  rejectionReason?: string | null;
+}) {
+  const { recipientName, itemName, quantity, departmentName, rejectionReason } = options;
+
+  const bodyContent = `
+    <div dir="rtl" style="${STYLES.body}">
+      <p style="${STYLES.title}">שלום ${recipientName},</p>
+      <p style="${STYLES.text}">
+        הפריט <strong>${itemName}</strong> (${quantity} יח') בבקשך הפתוחה <strong>נדחה</strong>.
+      </p>
+      <p style="${STYLES.text}">מחלקה: <strong>${departmentName}</strong></p>
+      ${rejectionReason?.trim() ? `<p style="${STYLES.text}"><strong>סיבת הדחייה:</strong> ${rejectionReason.trim()}</p>` : ""}
+      <p style="${STYLES.text}">תוכל לצפות בסטטוס הבקשה בפרופיל שלך.</p>
+    </div>
+    <div dir="rtl" style="${STYLES.footer}">
+      iPalsam – ניהול ציוד בבסיס צבאי
+    </div>`;
+
+  return baseTemplate(bodyContent);
+}
+
 export function requestRejectedEmail(options: {
   recipientName: string;
   departmentName: string;

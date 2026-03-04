@@ -304,6 +304,7 @@ export const openRequestStatusEnum = pgEnum("open_request_status", [
   "pending",
   "approved",
   "rejected",
+  "deleted",
 ]);
 
 export const openRequests = pgTable("open_requests", {
@@ -333,6 +334,7 @@ export const openRequestItems = pgTable("open_request_items", {
   approvedAt: timestamp("approved_at"),
   approvalNotes: text("approval_notes"), // הערות מהמאשר – נשלחות במייל ומוצגות למבקש
   rejectionReason: text("rejection_reason"),
+  deletedAt: timestamp("deleted_at"), // מתי נמחק (יצא ללקוח או הוסר)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

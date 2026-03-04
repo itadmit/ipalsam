@@ -2,6 +2,7 @@ import { auth, canAccessSuperAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import {
   Package,
   Users,
@@ -9,6 +10,8 @@ import {
   Clock,
   TrendingUp,
   Calendar,
+  Archive,
+  FileText,
 } from "lucide-react";
 import type { SessionUser } from "@/types";
 import { ReportCardActions, QuickExportButton } from "./report-actions";
@@ -63,6 +66,14 @@ export default async function ReportsPage() {
       icon: Calendar,
       color: "bg-slate-50 text-slate-600",
     },
+    {
+      id: "open-requests-archive",
+      title: "ארכיון בקשות פתוחות",
+      description: "פריטים שנמחקו – יצאו ללקוח או הוסרו",
+      icon: Archive,
+      color: "bg-amber-50 text-amber-600",
+      href: "/super-admin/open-requests-archive",
+    },
   ];
 
   return (
@@ -85,7 +96,17 @@ export default async function ReportsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-500 mb-4">{report.description}</p>
-              <ReportCardActions reportId={report.id} reportTitle={report.title} />
+              {"href" in report && report.href ? (
+                <Link
+                  href={report.href}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm font-medium transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  צפייה בארכיון
+                </Link>
+              ) : (
+                <ReportCardActions reportId={report.id} reportTitle={report.title} />
+              )}
             </CardContent>
           </Card>
         ))}

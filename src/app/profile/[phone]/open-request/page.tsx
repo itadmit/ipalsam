@@ -47,6 +47,15 @@ export default async function OpenRequestPage({
             departmentId={department.id}
             handoverPhone={handoverPhone}
             storeName={storeName}
+            sessionUser={
+              session?.user?.id
+                ? {
+                    id: session.user.id,
+                    phone: (session.user.phone || "").replace(/\D/g, "").slice(-10),
+                    name: `${session.user.firstName || ""} ${session.user.lastName || ""}`.trim(),
+                  }
+                : null
+            }
           />
         </Suspense>
       </div>
