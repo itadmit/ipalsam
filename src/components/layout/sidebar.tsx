@@ -24,6 +24,7 @@ import {
   Calendar,
   UserCircle,
   BookOpen,
+  Send,
 } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
@@ -105,7 +106,7 @@ function NavContent({
         {mainNavItems
           .filter((item) => item.show)
           .map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href.split("#")[0];
             const showBadge = item.href === "/dashboard/open-requests" && pendingOpenRequests > 0;
             return (
               <Link
@@ -239,6 +240,12 @@ export function Sidebar({
         canAccessAdmin || isDeptCommander || !!hasOpenRequestsAccess,
         visibleFeatures
       ),
+    },
+    {
+      href: "/dashboard/profile#my-open-requests",
+      label: "הבקשות שלי",
+      icon: Send,
+      show: getFeatureShow("my-open-requests", true, visibleFeatures),
     },
     {
       href: "/dashboard/profile",

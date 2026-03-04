@@ -10,6 +10,7 @@ interface CollapsibleSectionProps {
   badge?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  id?: string;
 }
 
 export function CollapsibleSection({
@@ -18,11 +19,12 @@ export function CollapsibleSection({
   badge,
   children,
   className,
+  id,
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className={cn("rounded-xl border border-slate-200 bg-white overflow-hidden", className)}>
+    <div id={id} className={cn("rounded-xl border border-slate-200 bg-white overflow-hidden", className)}>
       <button
         type="button"
         onClick={() => setOpen(!open)}

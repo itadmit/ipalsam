@@ -151,10 +151,19 @@ export async function createOpenRequestFromPublicStore(
   const validItems = items.filter((i) => (i.itemName || "").trim().length > 0 && (i.quantity || 0) > 0);
   if (validItems.length === 0) return { error: "יש להוסיף לפחות פריט אחד" };
 
+  const requester = requesterId
+    ? await db.query.users.findFirst({
+        where: eq(users.id, requesterId),
+        columns: { phone: true, firstName: true, lastName: true },
+      })
+    : null;
+
   const [newRequest] = await db
     .insert(openRequests)
     .values({
       requesterId,
+      requesterName: requester ? `${requester.firstName || ""} ${requester.lastName || ""}`.trim() || null : null,
+      requesterPhone: requester?.phone || null,
       departmentId,
       handoverUserId: match.id,
       source: "public_store",

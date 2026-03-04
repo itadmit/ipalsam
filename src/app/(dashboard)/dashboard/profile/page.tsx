@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { users, openRequests } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, or, sql } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -48,14 +48,24 @@ export default async function ProfilePage() {
   const phoneDigits = (user.phone || "").replace(/\D/g, "").slice(-10);
   const hasValidPhone = phoneDigits.length >= 9;
 
-  const myOpenRequests = await db.query.openRequests.findMany({
-    where: eq(openRequests.requesterId, session.user.id),
+  const phoneDigitsForMatch = (user.phone || "").replace(/\D/g, "").slice(-10);
+  const allMyRequests = await db.query.openRequests.findMany({
+    where:
+      phoneDigitsForMatch.length >= 9
+        ? or(
+            eq(openRequests.requesterId, session.user.id),
+            sql`regexp_replace(${openRequests.requesterPhone}::text, '\\D', '', 'g') = ${phoneDigitsForMatch}`
+          )
+        : eq(openRequests.requesterId, session.user.id),
     orderBy: [desc(openRequests.createdAt)],
     with: {
       department: { columns: { name: true } },
       items: true,
     },
   });
+  const myOpenRequests = allMyRequests.filter(
+    (r, i, arr) => arr.findIndex((x) => x.id === r.id) === i
+  );
 
   return (
     <div className="min-h-[calc(100vh-6rem)] -mx-4 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-6 lg:-mt-8 py-4 sm:py-6 lg:py-8 bg-gradient-to-br from-slate-50 to-emerald-50/30">
@@ -132,6 +142,7 @@ export default async function ProfilePage() {
         {/* סקשנים מתחת לפרופיל */}
         <div className="mt-6 space-y-4">
         <CollapsibleSection
+          id="my-open-requests"
           title="הבקשות שלי"
           defaultOpen={myOpenRequests.length > 0}
           badge={
