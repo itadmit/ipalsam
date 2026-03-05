@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { ChangePasswordForm } from "./change-password-form";
+import { ChangePasswordActions } from "./change-password-actions";
 
 export default async function ChangePasswordPage() {
   const session = await auth();
@@ -9,7 +10,7 @@ export default async function ChangePasswordPage() {
     redirect("/login");
   }
 
-  if (!session.user.mustChangePassword) {
+  if (!session.user.mustChangePassword || session.user.role === "super_admin") {
     redirect("/dashboard");
   }
 
@@ -41,6 +42,7 @@ export default async function ChangePasswordPage() {
           </div>
 
           <ChangePasswordForm />
+          <ChangePasswordActions />
         </div>
       </div>
     </div>

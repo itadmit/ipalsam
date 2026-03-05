@@ -73,8 +73,8 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // Check if user must change password
-  if (session.user.mustChangePassword) {
+  // Check if user must change password (סופר אדמין מדלג)
+  if (session.user.mustChangePassword && session.user.role !== "super_admin") {
     redirect("/change-password");
   }
 

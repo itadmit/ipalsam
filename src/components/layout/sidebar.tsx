@@ -284,7 +284,7 @@ export function Sidebar({
       href: "/dashboard/vehicles",
       label: "רכב",
       icon: Car,
-      show: hasVehicleDepartmentAccess,
+      show: getFeatureShow("vehicles", hasVehicleDepartmentAccess, visibleFeatures),
     },
     {
       href: "/dashboard/users",

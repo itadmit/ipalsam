@@ -34,8 +34,12 @@ export default auth((req) => {
     }
   }
 
-  // Check if must change password
-  if (session.user?.mustChangePassword && pathname !== "/change-password") {
+  // Check if must change password (סופר אדמין מדלג – גישה לכל החשבונות)
+  if (
+    session.user?.mustChangePassword &&
+    pathname !== "/change-password" &&
+    session.user?.role !== "super_admin"
+  ) {
     return NextResponse.redirect(new URL("/change-password", nextUrl));
   }
 

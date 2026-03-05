@@ -14,12 +14,13 @@ import {
   Plus,
   ArrowLeft,
   AlertTriangle,
+  Car,
 } from "lucide-react";
 import { QuickRequestCard } from "./quick-request-card";
 import { OpenRequestCard } from "./open-request-card";
 import type { SessionUser } from "@/types";
 import { db } from "@/db";
-import { itemTypes, requests } from "@/db/schema";
+import { itemTypes, requests, departments, vehicles } from "@/db/schema";
 import { eq, count, and, sql } from "drizzle-orm";
 
 interface DeptDashboardProps {
@@ -368,6 +369,40 @@ async function InventorySummary({ departmentId }: { departmentId: string | null 
   );
 }
 
+async function VehiclesQuickAccess({ departmentId }: { departmentId: string | null }) {
+  if (!departmentId) return null;
+
+  const dept = await db.query.departments.findFirst({
+    where: eq(departments.id, departmentId),
+    columns: { departmentType: true },
+  });
+  if (dept?.departmentType !== "vehicles") return null;
+
+  const [vCount] = await db
+    .select({ count: count() })
+    .from(vehicles)
+    .where(eq(vehicles.departmentId, departmentId));
+
+  return (
+    <Link href="/dashboard/vehicles">
+      <Card className="hover:border-emerald-200 hover:bg-slate-50/50 transition-colors cursor-pointer">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <Car className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900">מחלקת רכב</h3>
+              <p className="text-sm text-slate-500">{vCount?.count ?? 0} רכבים • נהגים • כרטיסי דלק</p>
+            </div>
+          </div>
+          <p className="text-sm text-emerald-600 mt-3 font-medium">לניהול רכבים ←</p>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
 export function DeptDashboard({ user }: DeptDashboardProps) {
   const departmentId = user.departmentId;
 
@@ -410,6 +445,10 @@ export function DeptDashboard({ user }: DeptDashboardProps) {
 
         <Suspense fallback={<div className="h-32 rounded-xl bg-slate-100 animate-pulse" />}>
           <OpenRequestCard userId={user.id} />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <VehiclesQuickAccess departmentId={departmentId} />
         </Suspense>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
