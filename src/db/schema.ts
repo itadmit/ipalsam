@@ -108,6 +108,7 @@ export const departments = pgTable("departments", {
   autoApproveRequests: boolean("auto_approve_requests").default(false).notNull(),
   visibleInHqDashboard: boolean("visible_in_hq_dashboard").default(true).notNull(),
   showOpenRequestButton: boolean("show_open_request_button").default(false).notNull(),
+  departmentType: text("department_type"), // "standard" | "vehicles" - null = standard
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -338,6 +339,99 @@ export const openRequestItems = pgTable("open_request_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// =============== מחלקת רכב ===============
+
+// רכבים
+export const vehicles = pgTable("vehicles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  departmentId: uuid("department_id")
+    .references(() => departments.id, { onDelete: "cascade" })
+    .notNull(),
+  vehicleNumber: text("vehicle_number").notNull(), // מס רכב
+  vehicleType: text("vehicle_type").notNull(), // חפק מגד, חפק מפ, אמבולנס, משאית, שכור לבן, אחר
+  vehicleTypeOther: text("vehicle_type_other"), // כשסוג = אחר
+  fitness: text("fitness").notNull(), // טיפולים לרכב, פלוגה א, פלוגה ב, פלוגה ג, מפקדה, אחר
+  fitnessOther: text("fitness_other"), // כשכשירות = אחר
+  kilometerage: integer("kilometerage").default(0).notNull(),
+  lastServiceDate: timestamp("last_service_date"),
+  licenseUrl: text("license_url"), // העלאת רישיון רכב
+  fuelCode: text("fuel_code"),
+  fuelType: text("fuel_type"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// היסטוריית קילומטראז – עדכונים עם מי ומתי
+export const vehicleKilometerageHistory = pgTable("vehicle_kilometerage_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  vehicleId: uuid("vehicle_id")
+    .references(() => vehicles.id, { onDelete: "cascade" })
+    .notNull(),
+  previousKm: integer("previous_km").notNull(),
+  newKm: integer("new_km").notNull(),
+  updatedById: uuid("updated_by_id")
+    .references(() => users.id)
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// דוחות תאונות
+export const accidentReports = pgTable("accident_reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  departmentId: uuid("department_id")
+    .references(() => departments.id, { onDelete: "cascade" })
+    .notNull(),
+  reporterName: text("reporter_name").notNull(),
+  reporterPhone: text("reporter_phone").notNull(),
+  reporterEmail: text("reporter_email"),
+  vehicleNumber: text("vehicle_number").notNull(),
+  vehicleClassification: text("vehicle_classification"),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// נהגים (שייכים למחלקת רכב)
+export const vehicleDrivers = pgTable("vehicle_drivers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  departmentId: uuid("department_id")
+    .references(() => departments.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// רישיונות והסמכות לנהג
+export const driverLicenses = pgTable("driver_licenses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  driverId: uuid("driver_id")
+    .references(() => vehicleDrivers.id, { onDelete: "cascade" })
+    .notNull(),
+  licenseType: text("license_type").notNull(), // רישיון, הסמכה, היתר
+  details: text("details"),
+  expiresAt: timestamp("expires_at"),
+  documentUrl: text("document_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// כרטיסי דלק
+export const fuelCards = pgTable("fuel_cards", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  departmentId: uuid("department_id")
+    .references(() => departments.id, { onDelete: "cascade" })
+    .notNull(),
+  cardNumber: text("card_number").notNull(),
+  initialAmount: integer("initial_amount").default(0).notNull(), // סכום התחלתי (אגורות)
+  balance: integer("balance").default(0).notNull(), // יתרה (אגורות)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // האזנה לאישורי בקשות – משתמש שמקבל מייל כשבקשות של חייל/מחלקה מאושרות
 export const requestApprovalListeners = pgTable("request_approval_listeners", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -416,6 +510,10 @@ export const departmentsRelations = relations(departments, ({ one, many }) => ({
   soldierDepartments: many(soldierDepartments),
   openRequests: many(openRequests),
   approvalListeners: many(requestApprovalListeners),
+  vehicles: many(vehicles),
+  accidentReports: many(accidentReports),
+  vehicleDrivers: many(vehicleDrivers),
+  fuelCards: many(fuelCards),
 }));
 
 export const handoverDepartmentsRelations = relations(handoverDepartments, ({ one }) => ({
@@ -457,6 +555,58 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   openRequests: many(openRequests),
   notifications: many(notifications),
   approvalListenersAsListener: many(requestApprovalListeners),
+}));
+
+export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
+  department: one(departments, {
+    fields: [vehicles.departmentId],
+    references: [departments.id],
+  }),
+  kilometerageHistory: many(vehicleKilometerageHistory),
+}));
+
+export const vehicleKilometerageHistoryRelations = relations(vehicleKilometerageHistory, ({ one }) => ({
+  vehicle: one(vehicles, {
+    fields: [vehicleKilometerageHistory.vehicleId],
+    references: [vehicles.id],
+  }),
+  updatedBy: one(users, {
+    fields: [vehicleKilometerageHistory.updatedById],
+    references: [users.id],
+  }),
+}));
+
+export const accidentReportsRelations = relations(accidentReports, ({ one }) => ({
+  department: one(departments, {
+    fields: [accidentReports.departmentId],
+    references: [departments.id],
+  }),
+}));
+
+export const vehicleDriversRelations = relations(vehicleDrivers, ({ one, many }) => ({
+  department: one(departments, {
+    fields: [vehicleDrivers.departmentId],
+    references: [departments.id],
+  }),
+  user: one(users, {
+    fields: [vehicleDrivers.userId],
+    references: [users.id],
+  }),
+  licenses: many(driverLicenses),
+}));
+
+export const driverLicensesRelations = relations(driverLicenses, ({ one }) => ({
+  driver: one(vehicleDrivers, {
+    fields: [driverLicenses.driverId],
+    references: [vehicleDrivers.id],
+  }),
+}));
+
+export const fuelCardsRelations = relations(fuelCards, ({ one }) => ({
+  department: one(departments, {
+    fields: [fuelCards.departmentId],
+    references: [departments.id],
+  }),
 }));
 
 export const requestApprovalListenersRelations = relations(requestApprovalListeners, ({ one }) => ({

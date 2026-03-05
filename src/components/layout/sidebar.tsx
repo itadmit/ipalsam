@@ -25,6 +25,7 @@ import {
   UserCircle,
   BookOpen,
   Send,
+  Car,
 } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
@@ -33,6 +34,7 @@ interface SidebarProps {
   user: SessionUser;
   pendingOpenRequests?: number;
   hasOpenRequestsAccess?: boolean;
+  hasVehicleDepartmentAccess?: boolean;
   visibleFeatures?: Record<string, boolean> | null;
 }
 
@@ -190,6 +192,7 @@ export function Sidebar({
   user,
   pendingOpenRequests = 0,
   hasOpenRequestsAccess = false,
+  hasVehicleDepartmentAccess = false,
   visibleFeatures = null,
 }: SidebarProps) {
   const pathname = usePathname();
@@ -276,6 +279,12 @@ export function Sidebar({
       label: "מחלקות",
       icon: Building2,
       show: getFeatureShow("departments", canAccessAdmin || isDeptCommander, visibleFeatures),
+    },
+    {
+      href: "/dashboard/vehicles",
+      label: "רכב",
+      icon: Car,
+      show: hasVehicleDepartmentAccess,
     },
     {
       href: "/dashboard/users",

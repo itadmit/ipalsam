@@ -18,7 +18,8 @@
     "db:fresh": "npm run db:reset && npm run db:seed",
     "db:fix-approved": "npx tsx src/db/fix-approved-requests.ts",
     "db:sync-inventory": "npx tsx src/db/sync-inventory.ts",
-    "db:add-columns": "npx tsx src/db/add-missing-columns.ts"
+    "db:add-columns": "npx tsx src/db/add-missing-columns.ts",
+    "db:add-vehicle-department": "npx tsx src/db/add-vehicle-department.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

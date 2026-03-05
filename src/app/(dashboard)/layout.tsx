@@ -50,6 +50,18 @@ async function getHasOpenRequestsAccess(userId: string, role: string, department
   return handover.length > 0;
 }
 
+async function getHasVehicleDepartmentAccess(role: string, departmentId: string | null): Promise<boolean> {
+  if (role === "super_admin" || role === "hq_commander") return true;
+  if (role === "dept_commander" && departmentId) {
+    const dept = await db.query.departments.findFirst({
+      where: eq(departments.id, departmentId),
+      columns: { departmentType: true },
+    });
+    return dept?.departmentType === "vehicles";
+  }
+  return false;
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -66,9 +78,10 @@ export default async function DashboardLayout({
     redirect("/change-password");
   }
 
-  const [pendingOpenRequests, hasOpenRequestsAccess, userRow] = await Promise.all([
+  const [pendingOpenRequests, hasOpenRequestsAccess, hasVehicleDepartmentAccess, userRow] = await Promise.all([
     getPendingOpenRequestsCount(session.user.id, session.user.role, session.user.departmentId),
     getHasOpenRequestsAccess(session.user.id, session.user.role, session.user.departmentId),
+    getHasVehicleDepartmentAccess(session.user.role, session.user.departmentId),
     db.query.users.findFirst({
       where: eq(users.id, session.user.id),
       columns: { visibleFeatures: true },
@@ -83,6 +96,7 @@ export default async function DashboardLayout({
         user={session.user as SessionUser}
         pendingOpenRequests={pendingOpenRequests}
         hasOpenRequestsAccess={hasOpenRequestsAccess}
+        hasVehicleDepartmentAccess={hasVehicleDepartmentAccess}
         visibleFeatures={visibleFeatures}
       />
       <main className="lg:pr-72 flex-1 flex flex-col">
