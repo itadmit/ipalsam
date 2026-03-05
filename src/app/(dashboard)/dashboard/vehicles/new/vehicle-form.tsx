@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createVehicle } from "@/actions/vehicles";
+import { FileUp, X } from "lucide-react";
 
 interface VehicleFormProps {
   departmentId: string;
@@ -42,6 +43,17 @@ export function VehicleForm({
   const [lastServiceDate, setLastServiceDate] = useState(initialData?.lastServiceDate || "");
   const [fuelCode, setFuelCode] = useState(initialData?.fuelCode || "");
   const [fuelType, setFuelType] = useState(initialData?.fuelType || "");
+  const [licenseUrl, setLicenseUrl] = useState("");
+  const licenseInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLicenseFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file?.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => setLicenseUrl(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +71,7 @@ export function VehicleForm({
         lastServiceDate: lastServiceDate || undefined,
         fuelCode: fuelCode || undefined,
         fuelType: fuelType || undefined,
+        licenseUrl: licenseUrl || undefined,
       });
       if (result.error) {
         setError(result.error);
@@ -153,6 +166,37 @@ export function VehicleForm({
         value={fuelType}
         onChange={(e) => setFuelType(e.target.value)}
       />
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">רישיון רכב</label>
+        <input
+          ref={licenseInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleLicenseFile}
+        />
+        {licenseUrl ? (
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+            <img src={licenseUrl} alt="רישיון" className="h-16 w-auto object-contain rounded" />
+            <div className="flex-1">
+              <span className="text-sm text-slate-600">תמונה נבחרה</span>
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => licenseInputRef.current?.click()}>
+                <FileUp className="w-4 h-4" /> החלף
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setLicenseUrl("")} className="text-red-600">
+                <X className="w-4 h-4" /> הסר
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" variant="outline" onClick={() => licenseInputRef.current?.click()} className="gap-2">
+            <FileUp className="w-4 h-4" /> העלאת רישיון רכב (תמונה)
+          </Button>
+        )}
+      </div>
 
       <div className="flex gap-3">
         <Button

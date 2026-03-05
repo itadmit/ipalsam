@@ -27,6 +27,7 @@ export async function createVehicle(data: {
   lastServiceDate?: string;
   fuelCode?: string;
   fuelType?: string;
+  licenseUrl?: string;
 }) {
   const session = await auth();
   if (!session?.user) return { error: "לא מחובר" };
@@ -44,6 +45,7 @@ export async function createVehicle(data: {
       lastServiceDate: data.lastServiceDate ? new Date(data.lastServiceDate) : null,
       fuelCode: data.fuelCode?.trim() || null,
       fuelType: data.fuelType?.trim() || null,
+      licenseUrl: data.licenseUrl?.trim() || null,
     })
     .returning();
 
@@ -199,5 +201,153 @@ export async function deleteFuelCard(id: string) {
   await db.delete(fuelCards).where(eq(fuelCards.id, id));
   revalidatePath("/dashboard/vehicles/fuel-cards");
   revalidatePath(`/dashboard/vehicles/fuel-cards/${id}`);
+  return { success: true };
+}
+
+// =============== נהגים ===============
+
+export async function createDriver(data: {
+  departmentId: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  userId?: string;
+}) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+  if (!canAccessVehicleDepartment(session, data.departmentId)) return { error: "אין הרשאה" };
+
+  const [d] = await db
+    .insert(vehicleDrivers)
+    .values({
+      departmentId: data.departmentId,
+      name: data.name.trim(),
+      phone: data.phone?.trim() || null,
+      email: data.email?.trim() || null,
+      notes: data.notes?.trim() || null,
+      userId: data.userId || null,
+    })
+    .returning();
+
+  revalidatePath("/dashboard/vehicles/drivers");
+  return { success: true, id: d.id };
+}
+
+export async function updateDriver(
+  id: string,
+  data: { name?: string; phone?: string; email?: string; notes?: string; userId?: string }
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const driver = await db.query.vehicleDrivers.findFirst({ where: eq(vehicleDrivers.id, id) });
+  if (!driver) return { error: "נהג לא נמצא" };
+  if (!canAccessVehicleDepartment(session, driver.departmentId)) return { error: "אין הרשאה" };
+
+  await db
+    .update(vehicleDrivers)
+    .set({
+      name: data.name?.trim() ?? driver.name,
+      phone: data.phone?.trim() || null,
+      email: data.email?.trim() || null,
+      notes: data.notes?.trim() || null,
+      userId: data.userId ?? driver.userId,
+      updatedAt: new Date(),
+    })
+    .where(eq(vehicleDrivers.id, id));
+
+  revalidatePath("/dashboard/vehicles/drivers");
+  revalidatePath(`/dashboard/vehicles/drivers/${id}`);
+  return { success: true };
+}
+
+export async function deleteDriver(id: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const driver = await db.query.vehicleDrivers.findFirst({ where: eq(vehicleDrivers.id, id) });
+  if (!driver) return { error: "נהג לא נמצא" };
+  if (!canAccessVehicleDepartment(session, driver.departmentId)) return { error: "אין הרשאה" };
+
+  await db.delete(vehicleDrivers).where(eq(vehicleDrivers.id, id));
+  revalidatePath("/dashboard/vehicles/drivers");
+  return { success: true };
+}
+
+// =============== רישיונות והסמכות ===============
+
+export async function createDriverLicense(data: {
+  driverId: string;
+  licenseType: string;
+  details?: string;
+  expiresAt?: string;
+  documentUrl?: string;
+}) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const driver = await db.query.vehicleDrivers.findFirst({ where: eq(vehicleDrivers.id, data.driverId) });
+  if (!driver) return { error: "נהג לא נמצא" };
+  if (!canAccessVehicleDepartment(session, driver.departmentId)) return { error: "אין הרשאה" };
+
+  const [lic] = await db
+    .insert(driverLicenses)
+    .values({
+      driverId: data.driverId,
+      licenseType: data.licenseType.trim(),
+      details: data.details?.trim() || null,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      documentUrl: data.documentUrl?.trim() || null,
+    })
+    .returning();
+
+  revalidatePath(`/dashboard/vehicles/drivers/${data.driverId}`);
+  return { success: true, id: lic.id };
+}
+
+export async function updateDriverLicense(
+  id: string,
+  data: { licenseType?: string; details?: string; expiresAt?: string; documentUrl?: string }
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const license = await db.query.driverLicenses.findFirst({
+    where: eq(driverLicenses.id, id),
+    with: { driver: { columns: { departmentId: true } } },
+  });
+  if (!license?.driver) return { error: "רישיון לא נמצא" };
+  if (!canAccessVehicleDepartment(session, license.driver.departmentId)) return { error: "אין הרשאה" };
+
+  await db
+    .update(driverLicenses)
+    .set({
+      ...data,
+      licenseType: data.licenseType?.trim(),
+      details: data.details?.trim() || null,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      documentUrl: data.documentUrl?.trim() || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(driverLicenses.id, id));
+
+  revalidatePath(`/dashboard/vehicles/drivers/${license.driverId}`);
+  return { success: true };
+}
+
+export async function deleteDriverLicense(id: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const license = await db.query.driverLicenses.findFirst({
+    where: eq(driverLicenses.id, id),
+    with: { driver: { columns: { departmentId: true } } },
+  });
+  if (!license?.driver) return { error: "רישיון לא נמצא" };
+  if (!canAccessVehicleDepartment(session, license.driver.departmentId)) return { error: "אין הרשאה" };
+
+  await db.delete(driverLicenses).where(eq(driverLicenses.id, id));
+  revalidatePath(`/dashboard/vehicles/drivers/${license.driverId}`);
   return { success: true };
 }

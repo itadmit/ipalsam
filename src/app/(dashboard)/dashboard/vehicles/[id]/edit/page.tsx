@@ -62,6 +62,7 @@ export default async function EditVehiclePage({
               lastServiceDate: vehicle.lastServiceDate?.toISOString().slice(0, 10) || "",
               fuelCode: vehicle.fuelCode || "",
               fuelType: vehicle.fuelType || "",
+              licenseUrl: vehicle.licenseUrl || "",
             }}
           />
         </CardContent>
