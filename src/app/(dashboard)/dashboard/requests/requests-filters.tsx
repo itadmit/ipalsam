@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Filter, ArrowUpDown } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "כל הסטטוסים" },
@@ -35,20 +35,26 @@ export function RequestsFilters() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Select
-        label="סטטוס"
-        value={searchParams.get("status") || ""}
-        onChange={(e) => updateParam("status", e.target.value)}
-        options={STATUS_OPTIONS}
-        className="w-44"
-      />
-      <Select
-        label="מיון"
-        value={searchParams.get("sort") || "date_desc"}
-        onChange={(e) => updateParam("sort", e.target.value)}
-        options={SORT_OPTIONS}
-        className="w-44"
-      />
+      <div className="flex items-center gap-2">
+        <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+        <Select
+          label="סטטוס"
+          value={searchParams.get("status") || ""}
+          onChange={(e) => updateParam("status", e.target.value)}
+          options={STATUS_OPTIONS}
+          className="w-40"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <ArrowUpDown className="w-4 h-4 text-slate-500 shrink-0" />
+        <Select
+          label="מיון"
+          value={searchParams.get("sort") || "date_desc"}
+          onChange={(e) => updateParam("sort", e.target.value)}
+          options={SORT_OPTIONS}
+          className="w-40"
+        />
+      </div>
       <ExportCsvButton searchParams={searchParams} />
     </div>
   );
