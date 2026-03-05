@@ -23,7 +23,7 @@ export default async function NewDriverPage({
   if (!dept) redirect("/dashboard/vehicles");
 
   const isAdmin = session.user.role === "super_admin" || session.user.role === "hq_commander";
-  const isVehicleDept = session.user.role === "dept_commander" && session.user.departmentId === dept;
+  const isVehicleDept = (session.user.role === "dept_commander" || session.user.role === "soldier") && session.user.departmentId === dept;
   if (!isAdmin && !isVehicleDept) redirect("/dashboard/vehicles");
 
   const department = await db.query.departments.findFirst({

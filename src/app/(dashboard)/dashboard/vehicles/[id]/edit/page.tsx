@@ -29,7 +29,7 @@ export default async function EditVehiclePage({
   if (!vehicle) notFound();
 
   const isAdmin = session.user.role === "super_admin" || session.user.role === "hq_commander";
-  const isVehicleDept = session.user.role === "dept_commander" && session.user.departmentId === vehicle.departmentId;
+  const isVehicleDept = (session.user.role === "dept_commander" || session.user.role === "soldier") && session.user.departmentId === vehicle.departmentId;
   if (!isAdmin && !isVehicleDept) notFound();
 
   return (

@@ -15,7 +15,7 @@ export default async function VehiclesPage() {
   if (!session?.user) redirect("/login");
 
   const isAdmin = session.user.role === "super_admin" || session.user.role === "hq_commander";
-  const isVehicleDept = session.user.role === "dept_commander" && session.user.departmentId;
+  const isVehicleDeptUser = (session.user.role === "dept_commander" || session.user.role === "soldier") && session.user.departmentId;
 
   let vehicleDeptId: string | null = null;
   if (isAdmin) {
@@ -24,7 +24,7 @@ export default async function VehiclesPage() {
       columns: { id: true },
     });
     vehicleDeptId = vehicleDept?.id ?? null;
-  } else if (isVehicleDept) {
+  } else if (isVehicleDeptUser) {
     const dept = await db.query.departments.findFirst({
       where: eq(departments.id, session.user.departmentId!),
       columns: { id: true, departmentType: true, name: true },
