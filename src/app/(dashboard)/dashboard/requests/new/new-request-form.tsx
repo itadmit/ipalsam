@@ -51,6 +51,8 @@ interface RequestRow {
   departmentId: string;
   itemTypeId: string;
   quantity: number;
+  itemTypeId2: string;
+  quantity2: number;
 }
 
 // Generate time slots based on operating hours
@@ -81,7 +83,7 @@ export function NewRequestForm({
   const [error, setError] = useState("");
 
   const [rows, setRows] = useState<RequestRow[]>([
-    { id: generateRowId(), departmentId: "", itemTypeId: "", quantity: 1 },
+    { id: generateRowId(), departmentId: "", itemTypeId: "", quantity: 1, itemTypeId2: "", quantity2: 1 },
   ]);
   const [urgency, setUrgency] = useState<"immediate" | "scheduled">("immediate");
   const [recipientName, setRecipientName] = useState("");
@@ -114,16 +116,19 @@ export function NewRequestForm({
       .flat()
       .find((i) => i.id === itemId);
     if (!item) return 0;
-    const requestedInForm = rows
-      .filter((r) => r.itemTypeId === itemId && r.id !== excludeRowId)
-      .reduce((sum, r) => sum + r.quantity, 0);
+    let requestedInForm = 0;
+    for (const r of rows) {
+      if (r.id === excludeRowId) continue;
+      if (r.itemTypeId === itemId) requestedInForm += r.quantity;
+      if (r.itemTypeId2 === itemId) requestedInForm += r.quantity2;
+    }
     return Math.max(0, item.available - requestedInForm);
   };
 
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: generateRowId(), departmentId: "", itemTypeId: "", quantity: 1 },
+      { id: generateRowId(), departmentId: "", itemTypeId: "", quantity: 1, itemTypeId2: "", quantity2: 1 },
     ]);
   };
 
@@ -146,6 +151,8 @@ export function NewRequestForm({
           departmentId,
           itemTypeId,
           quantity: 1,
+          itemTypeId2: "",
+          quantity2: 1,
         },
       ];
     });
@@ -163,6 +170,7 @@ export function NewRequestForm({
         const next = { ...r, [field]: value };
         if (field === "departmentId") {
           next.itemTypeId = "";
+          next.itemTypeId2 = "";
         }
         return next;
       })
@@ -173,8 +181,17 @@ export function NewRequestForm({
     e.preventDefault();
     setError("");
 
-    const validRows = rows.filter((r) => r.departmentId && r.itemTypeId && r.quantity > 0);
-    if (validRows.length === 0) {
+    const rowsWithItems = rows.filter(
+      (r) =>
+        r.departmentId &&
+        ((r.itemTypeId && r.quantity > 0) || (r.itemTypeId2 && r.quantity2 > 0))
+    );
+    const batchItems: { departmentId: string; itemTypeId: string; quantity: number }[] = [];
+    for (const r of rowsWithItems) {
+      if (r.itemTypeId && r.quantity > 0) batchItems.push({ departmentId: r.departmentId, itemTypeId: r.itemTypeId, quantity: r.quantity });
+      if (r.itemTypeId2 && r.quantity2 > 0) batchItems.push({ departmentId: r.departmentId, itemTypeId: r.itemTypeId2, quantity: r.quantity2 });
+    }
+    if (batchItems.length === 0) {
       setError("יש להוסיף לפחות פריט אחד");
       return;
     }
@@ -189,16 +206,30 @@ export function NewRequestForm({
       return;
     }
 
-    for (const row of validRows) {
-      const avail = getAvailableForItem(row.itemTypeId, row.id);
-      if (row.quantity > avail) {
-        const item = Object.values(itemsByDepartment)
-          .flat()
-          .find((i) => i.id === row.itemTypeId);
-        setError(
-          `לא ניתן לבקש יותר מ-${avail} יחידות עבור "${item?.name || "פריט"}"`
-        );
-        return;
+    for (const row of rowsWithItems) {
+      if (row.itemTypeId && row.quantity > 0) {
+        const avail = getAvailableForItem(row.itemTypeId, row.id);
+        if (row.quantity > avail) {
+          const item = Object.values(itemsByDepartment)
+            .flat()
+            .find((i) => i.id === row.itemTypeId);
+          setError(
+            `לא ניתן לבקש יותר מ-${avail} יחידות עבור "${item?.name || "פריט"}"`
+          );
+          return;
+        }
+      }
+      if (row.itemTypeId2 && row.quantity2 > 0) {
+        const avail = getAvailableForItem(row.itemTypeId2, row.id);
+        if (row.quantity2 > avail) {
+          const item = Object.values(itemsByDepartment)
+            .flat()
+            .find((i) => i.id === row.itemTypeId2);
+          setError(
+            `לא ניתן לבקש יותר מ-${avail} יחידות עבור "${item?.name || "פריט"}" (פריט 2)`
+          );
+          return;
+        }
       }
     }
 
@@ -221,11 +252,7 @@ export function NewRequestForm({
       }
 
       const result = await createRequestsBatch(
-        validRows.map((r) => ({
-          departmentId: r.departmentId,
-          itemTypeId: r.itemTypeId,
-          quantity: r.quantity,
-        })),
+        batchItems,
         {
           urgency,
           recipientName: recipientName.trim(),
@@ -310,6 +337,7 @@ export function NewRequestForm({
               const availableItems =
                 row.departmentId ? itemsByDepartment[row.departmentId] || [] : [];
               const available = getAvailableForItem(row.itemTypeId, row.id);
+              const available2 = getAvailableForItem(row.itemTypeId2, row.id);
 
               return (
                 <div
@@ -321,24 +349,28 @@ export function NewRequestForm({
                       label="מחלקה"
                       value={row.departmentId}
                       onChange={(e) => updateRow(row.id, "departmentId", e.target.value)}
-                      options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                      options={[...departments]
+                        .sort((a, b) => a.name.localeCompare(b.name, "he"))
+                        .map((d) => ({ value: d.id, label: d.name }))}
                       placeholder="בחר מחלקה"
                     />
                   </div>
-                  <div className="flex-1 min-w-[180px]">
+                  <div className="flex-1 min-w-[160px]">
                     <Select
-                      label="פריט"
+                      label="פריט 1"
                       value={row.itemTypeId}
                       onChange={(e) => updateRow(row.id, "itemTypeId", e.target.value)}
-                      options={availableItems.map((i) => ({
-                        value: i.id,
-                        label: `${i.name} (${getAvailableForItem(i.id, row.id)} זמין)`,
-                      }))}
+                      options={[...availableItems]
+                        .sort((a, b) => a.name.localeCompare(b.name, "he"))
+                        .map((i) => ({
+                          value: i.id,
+                          label: `${i.name} (${getAvailableForItem(i.id, row.id)} זמין)`,
+                        }))}
                       placeholder={row.departmentId ? "בחר פריט" : "בחר מחלקה קודם"}
                       disabled={!row.departmentId || availableItems.length === 0}
                     />
                   </div>
-                  <div className="w-24">
+                  <div className="w-20">
                     <Input
                       label="כמות"
                       type="number"
@@ -348,6 +380,34 @@ export function NewRequestForm({
                       onChange={(e) =>
                         updateRow(row.id, "quantity", parseInt(e.target.value) || 1)
                       }
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[160px]">
+                    <Select
+                      label="פריט 2"
+                      value={row.itemTypeId2}
+                      onChange={(e) => updateRow(row.id, "itemTypeId2", e.target.value)}
+                      options={[...availableItems]
+                        .sort((a, b) => a.name.localeCompare(b.name, "he"))
+                        .map((i) => ({
+                          value: i.id,
+                          label: `${i.name} (${getAvailableForItem(i.id, row.id)} זמין)`,
+                        }))}
+                      placeholder={row.departmentId ? "אופציונלי - פריט נוסף" : "—"}
+                      disabled={!row.departmentId || availableItems.length === 0}
+                    />
+                  </div>
+                  <div className="w-20">
+                    <Input
+                      label="כמות"
+                      type="number"
+                      min={1}
+                      max={available2 || 999}
+                      value={row.quantity2}
+                      onChange={(e) =>
+                        updateRow(row.id, "quantity2", parseInt(e.target.value) || 1)
+                      }
+                      disabled={!row.itemTypeId2}
                     />
                   </div>
                   <Button
