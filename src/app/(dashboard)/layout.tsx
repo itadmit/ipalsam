@@ -53,7 +53,7 @@ async function getHasOpenRequestsAccess(userId: string, role: string, department
 
 async function getHasVehicleDepartmentAccess(role: string, departmentId: string | null): Promise<boolean> {
   if (role === "super_admin" || role === "hq_commander") return true;
-  if (role === "dept_commander" && departmentId) {
+  if ((role === "dept_commander" || role === "soldier") && departmentId) {
     const dept = await db.query.departments.findFirst({
       where: eq(departments.id, departmentId),
       columns: { departmentType: true, name: true },
