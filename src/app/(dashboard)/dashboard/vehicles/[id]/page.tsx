@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Car, History, Pencil } from "lucide-react";
+import { Truck, History, Pencil } from "lucide-react";
 import { db } from "@/db";
 import { vehicles } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -65,7 +65,7 @@ export default async function VehicleDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Car className="w-5 h-5" />
+              <Truck className="w-5 h-5" />
               פרטי רכב
             </CardTitle>
           </CardHeader>

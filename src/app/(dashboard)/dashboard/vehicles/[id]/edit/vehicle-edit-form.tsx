@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { updateVehicle } from "@/actions/vehicles";
-import { FileUp, X, ExternalLink } from "lucide-react";
+import { updateVehicle, deleteVehicle } from "@/actions/vehicles";
+import { FileUp, X, ExternalLink, Trash2 } from "lucide-react";
 
 interface VehicleEditFormProps {
   vehicleId: string;
+  departmentId: string;
   vehicleTypes: { value: string; label: string }[];
   fitnessOptions: { value: string; label: string }[];
   initialData: {
@@ -27,6 +28,7 @@ interface VehicleEditFormProps {
 
 export function VehicleEditForm({
   vehicleId,
+  departmentId,
   vehicleTypes,
   fitnessOptions,
   initialData,
@@ -44,6 +46,9 @@ export function VehicleEditForm({
   const [fuelType, setFuelType] = useState(initialData.fuelType);
   const [licenseUrl, setLicenseUrl] = useState(initialData.licenseUrl);
   const licenseInputRef = useRef<HTMLInputElement>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const handleLicenseFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,6 +85,27 @@ export function VehicleEditForm({
       setError("אירעה שגיאה");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (deleteConfirmText !== "מחק") return;
+    setDeleteLoading(true);
+    setError("");
+    try {
+      const result = await deleteVehicle(vehicleId);
+      if ("error" in result && result.error) {
+        setError(result.error);
+      } else {
+        router.push(`/dashboard/vehicles/list?dept=${departmentId}`);
+        router.refresh();
+      }
+    } catch {
+      setError("אירעה שגיאה במחיקה");
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText("");
     }
   };
 
@@ -198,6 +224,56 @@ export function VehicleEditForm({
         <Button type="submit" className="flex-1" loading={loading}>
           שמור שינויים
         </Button>
+      </div>
+
+      <hr className="border-slate-200" />
+
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          className="text-red-600 border-red-200 hover:bg-red-50 gap-2"
+          onClick={() => setShowDeleteConfirm(true)}
+        >
+          <Trash2 className="w-4 h-4" />
+          מחיקת רכב
+        </Button>
+
+        {showDeleteConfirm && (
+          <div className="mt-4 p-4 rounded-lg border border-red-200 bg-red-50 space-y-3">
+            <p className="text-sm text-red-800 font-medium">אימות כפול – הזן &quot;מחק&quot; לאישור</p>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="מחק"
+              dir="ltr"
+              className="text-center"
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText("");
+                }}
+              >
+                ביטול
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                disabled={deleteConfirmText !== "מחק"}
+                loading={deleteLoading}
+                onClick={handleDelete}
+              >
+                מחק רכב
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </form>
   );

@@ -12,7 +12,9 @@ function canAccessVehicleDepartment(
 ): boolean {
   const isAdmin = session.user.role === "super_admin" || session.user.role === "hq_commander";
   const isVehicleDept =
-    session.user.role === "dept_commander" && session.user.departmentId != null && session.user.departmentId === departmentId;
+    (session.user.role === "dept_commander" || session.user.role === "soldier") &&
+    session.user.departmentId != null &&
+    session.user.departmentId === departmentId;
   return isAdmin || isVehicleDept;
 }
 
@@ -31,6 +33,7 @@ export async function createVehicle(data: {
 }) {
   const session = await auth();
   if (!session?.user) return { error: "לא מחובר" };
+  if (!canAccessVehicleDepartment(session, data.departmentId)) return { error: "אין הרשאה" };
 
   const [v] = await db
     .insert(vehicles)
@@ -71,6 +74,13 @@ export async function updateVehicle(
   const session = await auth();
   if (!session?.user) return { error: "לא מחובר" };
 
+  const vehicle = await db.query.vehicles.findFirst({
+    where: eq(vehicles.id, id),
+    columns: { departmentId: true },
+  });
+  if (!vehicle) return { error: "רכב לא נמצא" };
+  if (!canAccessVehicleDepartment(session, vehicle.departmentId)) return { error: "אין הרשאה" };
+
   await db
     .update(vehicles)
     .set({
@@ -90,15 +100,33 @@ export async function updateVehicle(
   return { success: true };
 }
 
+export async function deleteVehicle(id: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const vehicle = await db.query.vehicles.findFirst({
+    where: eq(vehicles.id, id),
+    columns: { id: true, departmentId: true },
+  });
+  if (!vehicle) return { error: "רכב לא נמצא" };
+  if (!canAccessVehicleDepartment(session, vehicle.departmentId)) return { error: "אין הרשאה" };
+
+  await db.delete(vehicles).where(eq(vehicles.id, id));
+  revalidatePath("/dashboard/vehicles");
+  revalidatePath("/dashboard/vehicles/list");
+  return { success: true };
+}
+
 export async function updateVehicleKilometerage(vehicleId: string, newKm: number) {
   const session = await auth();
   if (!session?.user) return { error: "לא מחובר" };
 
   const vehicle = await db.query.vehicles.findFirst({
     where: eq(vehicles.id, vehicleId),
-    columns: { kilometerage: true },
+    columns: { kilometerage: true, departmentId: true },
   });
   if (!vehicle) return { error: "רכב לא נמצא" };
+  if (!canAccessVehicleDepartment(session, vehicle.departmentId)) return { error: "אין הרשאה" };
 
   const previousKm = vehicle.kilometerage;
 

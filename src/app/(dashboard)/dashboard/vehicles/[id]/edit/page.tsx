@@ -51,6 +51,7 @@ export default async function EditVehiclePage({
         <CardContent className="p-6">
           <VehicleEditForm
             vehicleId={id}
+            departmentId={vehicle.departmentId}
             vehicleTypes={VEHICLE_TYPES}
             fitnessOptions={FITNESS_OPTIONS}
             initialData={{

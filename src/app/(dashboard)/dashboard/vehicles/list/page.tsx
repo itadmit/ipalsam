@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Car, Plus, ArrowRight } from "lucide-react";
+import { Truck, Plus, ArrowRight } from "lucide-react";
 import { db } from "@/db";
 import { departments, vehicles } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -61,7 +61,7 @@ export default async function VehiclesListPage({
         <CardContent className="p-4">
           {vehiclesList.length === 0 ? (
             <EmptyState
-              icon={Car}
+              icon={Truck}
               title="אין רכבים"
               description="הוסף רכב חדש להתחלה"
               action={
@@ -83,7 +83,7 @@ export default async function VehiclesListPage({
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                      <Car className="w-6 h-6 text-emerald-600" />
+                      <Truck className="w-6 h-6 text-emerald-600" />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900">מס׳ רכב: {v.vehicleNumber}</p>
