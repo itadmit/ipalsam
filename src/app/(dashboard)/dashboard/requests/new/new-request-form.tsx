@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { SignaturePad } from "@/components/ui/signature-pad";
 import { createRequestsBatch } from "@/actions/requests";
 import {
@@ -44,6 +45,7 @@ interface NewRequestFormProps {
   departments: Department[];
   itemsByDepartment: Record<string, Item[]>;
   recentSuggestions?: RecentSuggestion[];
+  userDepartmentId?: string | null;
 }
 
 interface RequestRow {
@@ -73,17 +75,50 @@ function generateRowId() {
   return `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function sortDepartmentsWithUserFirst(
+  departments: Department[],
+  userDepartmentId: string | null | undefined
+) {
+  if (!userDepartmentId) {
+    return [...departments].sort((a, b) => a.name.localeCompare(b.name, "he"));
+  }
+  const sorted = [...departments].sort((a, b) => a.name.localeCompare(b.name, "he"));
+  const userDept = sorted.find((d) => d.id === userDepartmentId);
+  if (!userDept) return sorted;
+  return [
+    userDept,
+    ...sorted.filter((d) => d.id !== userDepartmentId),
+  ];
+}
+
 export function NewRequestForm({
   departments,
   itemsByDepartment,
   recentSuggestions = [],
+  userDepartmentId,
 }: NewRequestFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const sortedDepartments = useMemo(
+    () => sortDepartmentsWithUserFirst(departments, userDepartmentId),
+    [departments, userDepartmentId]
+  );
+
+  const defaultDeptId = userDepartmentId && departments.some((d) => d.id === userDepartmentId)
+    ? userDepartmentId
+    : "";
+
   const [rows, setRows] = useState<RequestRow[]>([
-    { id: generateRowId(), departmentId: "", itemTypeId: "", quantity: 1, itemTypeId2: "", quantity2: 1 },
+    {
+      id: generateRowId(),
+      departmentId: defaultDeptId,
+      itemTypeId: "",
+      quantity: 1,
+      itemTypeId2: "",
+      quantity2: 1,
+    },
   ]);
   const [urgency, setUrgency] = useState<"immediate" | "scheduled">("immediate");
   const [recipientName, setRecipientName] = useState("");
@@ -349,24 +384,22 @@ export function NewRequestForm({
                       label="מחלקה"
                       value={row.departmentId}
                       onChange={(e) => updateRow(row.id, "departmentId", e.target.value)}
-                      options={[...departments]
-                        .sort((a, b) => a.name.localeCompare(b.name, "he"))
-                        .map((d) => ({ value: d.id, label: d.name }))}
+                      options={sortedDepartments.map((d) => ({ value: d.id, label: d.name }))}
                       placeholder="בחר מחלקה"
                     />
                   </div>
                   <div className="flex-1 min-w-[160px]">
-                    <Select
+                    <Combobox
                       label="פריט 1"
                       value={row.itemTypeId}
-                      onChange={(e) => updateRow(row.id, "itemTypeId", e.target.value)}
+                      onChange={(v) => updateRow(row.id, "itemTypeId", v)}
                       options={[...availableItems]
                         .sort((a, b) => a.name.localeCompare(b.name, "he"))
                         .map((i) => ({
                           value: i.id,
                           label: `${i.name} (${getAvailableForItem(i.id, row.id)} זמין)`,
                         }))}
-                      placeholder={row.departmentId ? "בחר פריט" : "בחר מחלקה קודם"}
+                      placeholder={row.departmentId ? "חפש או בחר פריט" : "בחר מחלקה קודם"}
                       disabled={!row.departmentId || availableItems.length === 0}
                     />
                   </div>
@@ -383,17 +416,17 @@ export function NewRequestForm({
                     />
                   </div>
                   <div className="flex-1 min-w-[160px]">
-                    <Select
+                    <Combobox
                       label="פריט 2"
                       value={row.itemTypeId2}
-                      onChange={(e) => updateRow(row.id, "itemTypeId2", e.target.value)}
+                      onChange={(v) => updateRow(row.id, "itemTypeId2", v)}
                       options={[...availableItems]
                         .sort((a, b) => a.name.localeCompare(b.name, "he"))
                         .map((i) => ({
                           value: i.id,
                           label: `${i.name} (${getAvailableForItem(i.id, row.id)} זמין)`,
                         }))}
-                      placeholder={row.departmentId ? "אופציונלי - פריט נוסף" : "—"}
+                      placeholder={row.departmentId ? "אופציונלי - חפש פריט" : "—"}
                       disabled={!row.departmentId || availableItems.length === 0}
                     />
                   </div>

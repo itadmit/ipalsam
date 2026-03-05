@@ -101,6 +101,11 @@ export default async function NewRequestPage() {
     operatingHoursEnd: "17:00",
   }));
 
+  const userDepartmentId =
+    session.user.role === "soldier" || session.user.role === "dept_commander"
+      ? session.user.departmentId ?? null
+      : null;
+
   return (
     <div>
       <PageHeader title="השאלה חדשה" description="הגשת השאלה לציוד" />
@@ -111,6 +116,7 @@ export default async function NewRequestPage() {
             departments={departmentsWithHours}
             itemsByDepartment={itemsByDepartment}
             recentSuggestions={recentSuggestions}
+            userDepartmentId={userDepartmentId}
           />
         </CardContent>
       </Card>
