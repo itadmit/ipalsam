@@ -212,7 +212,7 @@ export async function identifySoldierByPhone(phone: string) {
     return { error: "חייל לא נמצא במערכת" };
   }
 
-  const token = createRequestToken(soldier.id);
+  const token = await createRequestToken(soldier.id);
   return { token, soldierName: `${soldier.firstName} ${soldier.lastName}` };
 }
 
@@ -236,7 +236,7 @@ export async function identifyOrCreateSoldier(
   });
 
   if (requester?.isActive) {
-    const token = createRequestToken(requester.id);
+    const token = await createRequestToken(requester.id);
     return { token, soldierName: `${requester.firstName} ${requester.lastName}`, userId: requester.id };
   }
 
@@ -259,7 +259,7 @@ export async function identifyOrCreateSoldier(
           existingByPhone.role || ""
         ) && existingByPhone.isActive;
       if (canRequest) {
-        const token = createRequestToken(existingByPhone.id);
+        const token = await createRequestToken(existingByPhone.id);
         return {
           token,
           soldierName: `${existingByPhone.firstName || ""} ${existingByPhone.lastName || ""}`.trim(),
@@ -287,7 +287,7 @@ export async function identifyOrCreateSoldier(
         departmentId: options.departmentId,
       });
     }
-    const token = createRequestToken(newUser.id);
+    const token = await createRequestToken(newUser.id);
     return { token, soldierName: `${options.firstName} ${options.lastName}`, userId: newUser.id };
   }
 
@@ -304,7 +304,7 @@ export async function identifySoldierByBarcode(barcode: string) {
   if (user.role !== "soldier") {
     return { error: "רק חיילים יכולים להשתמש בהשאלה מהירה" };
   }
-  const token = createRequestToken(user.id);
+  const token = await createRequestToken(user.id);
   return {
     token,
     soldierName: `${user.firstName} ${user.lastName}`,
@@ -327,7 +327,7 @@ async function getSoldierAllowedDepartmentIds(userId: string): Promise<string[]>
 }
 
 export async function getSoldierRequestData(token: string, fromPhone?: string) {
-  const verified = verifyRequestToken(token);
+  const verified = await verifyRequestToken(token);
   if (!verified) return { error: "פג תוקף. אנא הזן טלפון או סרוק ברקוד מחדש" };
 
   const user = await db.query.users.findFirst({
@@ -491,7 +491,7 @@ export async function createRequestBySoldier(
   },
   fromPhone?: string
 ) {
-  const verified = verifyRequestToken(token);
+  const verified = await verifyRequestToken(token);
   if (!verified) return { error: "פג תוקף. אנא הזן טלפון או סרוק ברקוד מחדש" };
 
   const requester = await db.query.users.findFirst({

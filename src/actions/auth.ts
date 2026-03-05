@@ -107,7 +107,7 @@ export async function prepareImpersonate(userId: string) {
     return { error: "משתמש לא נמצא או לא פעיל" };
   }
 
-  const token = createImpersonateToken(userId);
+  const token = await createImpersonateToken(userId);
   return { success: true, impersonateToken: token };
 }
 

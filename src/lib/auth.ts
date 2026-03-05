@@ -35,7 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // התחברות כמשתמש (סופר אדמין) – ללא איפוס סיסמה
         const impersonateToken = credentials?.impersonateToken as string | undefined;
         if (impersonateToken) {
-          const parsed = verifyImpersonateToken(impersonateToken);
+          const parsed = await verifyImpersonateToken(impersonateToken);
           if (!parsed) return null;
           const user = await db.query.users.findFirst({
             where: eq(users.id, parsed.userId),
