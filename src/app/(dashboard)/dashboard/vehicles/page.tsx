@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, FileWarning, Users, CreditCard, Plus } from "lucide-react";
+import { Car, FileWarning, Users, CreditCard, Plus } from "lucide-react";
 import { db } from "@/db";
 import { departments, vehicles } from "@/db/schema";
 import { eq, and, count } from "drizzle-orm";
@@ -54,7 +54,7 @@ export default async function VehiclesPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <Truck className="w-6 h-6 text-emerald-600" />
+                  <Car className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-slate-900">הרכבים שלי</h3>

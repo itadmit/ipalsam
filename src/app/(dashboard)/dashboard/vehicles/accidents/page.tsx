@@ -9,8 +9,8 @@ import { FileWarning, ArrowRight } from "lucide-react";
 import { db } from "@/db";
 import { departments, accidentReports } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { formatDateTime } from "@/lib/utils";
 import { isVehicleDepartment } from "@/lib/vehicle-constants";
+import { AccidentReportItem } from "./accident-report-item";
 
 export default async function AccidentReportsPage({
   searchParams,
@@ -68,25 +68,17 @@ export default async function AccidentReportsPage({
           ) : (
             <div className="space-y-3">
               {reports.map((r) => (
-                <div
+                <AccidentReportItem
                   key={r.id}
-                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/50"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-slate-900">רכב {r.vehicleNumber}</p>
-                      <p className="text-sm text-slate-500">
-                        מדווח: {r.reporterName} • {r.reporterPhone}
-                        {r.reporterEmail && ` • ${r.reporterEmail}`}
-                      </p>
-                      {r.vehicleClassification && (
-                        <p className="text-sm text-slate-500">סווג: {r.vehicleClassification}</p>
-                      )}
-                      <p className="text-sm text-slate-700 mt-2">{r.description}</p>
-                    </div>
-                    <span className="text-xs text-slate-400 shrink-0">{formatDateTime(r.createdAt)}</span>
-                  </div>
-                </div>
+                  id={r.id}
+                  vehicleNumber={r.vehicleNumber}
+                  reporterName={r.reporterName}
+                  reporterPhone={r.reporterPhone}
+                  reporterEmail={r.reporterEmail}
+                  vehicleClassification={r.vehicleClassification}
+                  description={r.description}
+                  createdAt={r.createdAt}
+                />
               ))}
             </div>
           )}

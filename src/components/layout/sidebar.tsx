@@ -25,7 +25,7 @@ import {
   UserCircle,
   BookOpen,
   Send,
-  Truck,
+  Car,
 } from "lucide-react";
 import { useState } from "react";
 import { signOut } from "next-auth/react";
@@ -283,7 +283,7 @@ export function Sidebar({
     {
       href: "/dashboard/vehicles",
       label: "רכב",
-      icon: Truck,
+      icon: Car,
       show: getFeatureShow("vehicles", hasVehicleDepartmentAccess, visibleFeatures),
     },
     {

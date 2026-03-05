@@ -5,12 +5,14 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Truck, History, Pencil } from "lucide-react";
+import { Car, Truck, History, Pencil } from "lucide-react";
 import { db } from "@/db";
 import { vehicles } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { KilometerageEditor } from "./kilometerage-editor";
+import { VehicleDeleteButton } from "./vehicle-delete-button";
+import { KilometerageHistoryList } from "./kilometerage-history-list";
 
 export default async function VehicleDetailPage({
   params,
@@ -52,12 +54,15 @@ export default async function VehicleDetailPage({
         title={`רכב ${vehicle.vehicleNumber}`}
         description={vehicle.department?.name}
         actions={
-          <Link href={`/dashboard/vehicles/${id}/edit`}>
-            <Button variant="outline" className="gap-2">
-              <Pencil className="w-4 h-4" />
-              עריכה
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/dashboard/vehicles/${id}/edit`}>
+              <Button variant="outline" className="gap-2">
+                <Pencil className="w-4 h-4" />
+                עריכה
+              </Button>
+            </Link>
+            <VehicleDeleteButton vehicleId={id} departmentId={vehicle.departmentId} />
+          </div>
         }
       />
 
@@ -65,7 +70,11 @@ export default async function VehicleDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Truck className="w-5 h-5" />
+              {vehicle.vehicleType === "משאית" ? (
+                <Truck className="w-5 h-5" />
+              ) : (
+                <Car className="w-5 h-5" />
+              )}
               פרטי רכב
             </CardTitle>
           </CardHeader>
@@ -127,28 +136,7 @@ export default async function VehicleDetailPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {vehicle.kilometerageHistory.length === 0 ? (
-              <p className="text-sm text-slate-500">אין עדכונים עדיין</p>
-            ) : (
-              <div className="space-y-3">
-                {vehicle.kilometerageHistory.map((h) => (
-                  <div
-                    key={h.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-slate-50"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {h.previousKm.toLocaleString()} → {h.newKm.toLocaleString()} ק״מ
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        עודכן על ידי {h.updatedBy?.firstName} {h.updatedBy?.lastName}
-                      </p>
-                    </div>
-                    <span className="text-sm text-slate-400">{formatDateTime(h.createdAt)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <KilometerageHistoryList entries={vehicle.kilometerageHistory} />
           </CardContent>
         </Card>
       </div>

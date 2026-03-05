@@ -14,7 +14,7 @@ import {
   Plus,
   ArrowLeft,
   AlertTriangle,
-  Truck,
+  Car,
 } from "lucide-react";
 import { QuickRequestCard } from "./quick-request-card";
 import { OpenRequestCard } from "./open-request-card";
@@ -390,7 +390,7 @@ async function VehiclesQuickAccess({ departmentId }: { departmentId: string | nu
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <Truck className="w-6 h-6 text-emerald-600" />
+              <Car className="w-6 h-6 text-emerald-600" />
             </div>
             <div>
               <h3 className="font-semibold text-slate-900">מחלקת רכב</h3>

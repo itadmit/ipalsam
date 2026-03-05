@@ -146,6 +146,23 @@ export async function updateVehicleKilometerage(vehicleId: string, newKm: number
   return { success: true };
 }
 
+export async function deleteKilometerageHistory(historyId: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const record = await db.query.vehicleKilometerageHistory.findFirst({
+    where: eq(vehicleKilometerageHistory.id, historyId),
+    columns: { vehicleId: true },
+    with: { vehicle: { columns: { departmentId: true } } },
+  });
+  if (!record?.vehicle) return { error: "רישום לא נמצא" };
+  if (!canAccessVehicleDepartment(session, record.vehicle.departmentId)) return { error: "אין הרשאה" };
+
+  await db.delete(vehicleKilometerageHistory).where(eq(vehicleKilometerageHistory.id, historyId));
+  revalidatePath(`/dashboard/vehicles/${record.vehicleId}`);
+  return { success: true };
+}
+
 export async function submitAccidentReport(data: {
   departmentId: string;
   reporterName: string;
@@ -157,6 +174,7 @@ export async function submitAccidentReport(data: {
 }) {
   const session = await auth();
   if (!session?.user) return { error: "לא מחובר" };
+  if (!canAccessVehicleDepartment(session, data.departmentId)) return { error: "אין הרשאה" };
 
   await db.insert(accidentReports).values({
     departmentId: data.departmentId,
@@ -168,6 +186,22 @@ export async function submitAccidentReport(data: {
     description: data.description.trim(),
   });
 
+  revalidatePath("/dashboard/vehicles/accidents");
+  return { success: true };
+}
+
+export async function deleteAccidentReport(id: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "לא מחובר" };
+
+  const report = await db.query.accidentReports.findFirst({
+    where: eq(accidentReports.id, id),
+    columns: { id: true, departmentId: true },
+  });
+  if (!report) return { error: "דוח לא נמצא" };
+  if (!canAccessVehicleDepartment(session, report.departmentId)) return { error: "אין הרשאה" };
+
+  await db.delete(accidentReports).where(eq(accidentReports.id, id));
   revalidatePath("/dashboard/vehicles/accidents");
   return { success: true };
 }

@@ -5,12 +5,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Truck, Plus, ArrowRight } from "lucide-react";
+import { Car, Plus } from "lucide-react";
 import { db } from "@/db";
 import { departments, vehicles } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { formatDate } from "@/lib/utils";
-import { VEHICLE_TYPES_MAP, isVehicleDepartment } from "@/lib/vehicle-constants";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
+import { VehicleListItem } from "./vehicle-list-item";
 
 export default async function VehiclesListPage({
   searchParams,
@@ -61,7 +61,7 @@ export default async function VehiclesListPage({
         <CardContent className="p-4">
           {vehiclesList.length === 0 ? (
             <EmptyState
-              icon={Truck}
+              icon={Car}
               title="אין רכבים"
               description="הוסף רכב חדש להתחלה"
               action={
@@ -76,29 +76,18 @@ export default async function VehiclesListPage({
           ) : (
             <div className="space-y-3">
               {vehiclesList.map((v) => (
-                <Link
+                <VehicleListItem
                   key={v.id}
-                  href={`/dashboard/vehicles/${v.id}`}
-                  className="flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-emerald-200 hover:bg-slate-50/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                      <Truck className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">מס׳ רכב: {v.vehicleNumber}</p>
-                      <p className="text-sm text-slate-500">
-                        {VEHICLE_TYPES_MAP[v.vehicleType] || v.vehicleType}
-                        {v.vehicleTypeOther && ` (${v.vehicleTypeOther})`} • {v.fitness}
-                        {v.fitnessOther && ` (${v.fitnessOther})`}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        קילומטראז: {v.kilometerage.toLocaleString()} • טיפול אחרון: {formatDate(v.lastServiceDate) || "-"}
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-slate-400" />
-                </Link>
+                  id={v.id}
+                  vehicleNumber={v.vehicleNumber}
+                  vehicleType={v.vehicleType}
+                  vehicleTypeOther={v.vehicleTypeOther}
+                  fitness={v.fitness}
+                  fitnessOther={v.fitnessOther}
+                  kilometerage={v.kilometerage}
+                  lastServiceDate={v.lastServiceDate}
+                  departmentId={v.departmentId}
+                />
               ))}
             </div>
           )}
