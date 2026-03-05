@@ -86,6 +86,20 @@ async function addMissingColumns() {
   `;
   console.log("✅ soldier_departments");
 
+  // 7. request_approval_listeners
+  await sql`
+    CREATE TABLE IF NOT EXISTS request_approval_listeners (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      listener_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      listen_to_user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+      listen_to_department_id uuid REFERENCES departments(id) ON DELETE CASCADE,
+      receive_email boolean DEFAULT true NOT NULL,
+      created_at timestamp DEFAULT now() NOT NULL,
+      CONSTRAINT at_least_one_listen_to CHECK (listen_to_user_id IS NOT NULL OR listen_to_department_id IS NOT NULL)
+    )
+  `;
+  console.log("✅ request_approval_listeners");
+
   console.log("\n✅ הסתיים");
 }
 

@@ -25,3 +25,30 @@ export function verifyRequestToken(token: string): { userId: string } | null {
     return null;
   }
 }
+
+const IMPERSONATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function createImpersonateToken(userId: string): string {
+  const exp = Date.now() + IMPERSONATE_TTL_MS;
+  const payload = `impersonate:${userId}:${exp}`;
+  const sig = createHmac("sha256", SECRET).update(payload).digest("hex").slice(0, 16);
+  return Buffer.from(`${payload}:${sig}`).toString("base64url");
+}
+
+export function verifyImpersonateToken(token: string): { userId: string } | null {
+  try {
+    const decoded = Buffer.from(token, "base64url").toString("utf-8");
+    const parts = decoded.split(":");
+    if (parts[0] !== "impersonate" || parts.length < 4) return null;
+    const [, userId, expStr, sig] = parts;
+    if (!userId || !expStr || !sig) return null;
+    const exp = parseInt(expStr, 10);
+    if (Date.now() > exp) return null;
+    const payload = `impersonate:${userId}:${expStr}`;
+    const expectedSig = createHmac("sha256", SECRET).update(payload).digest("hex").slice(0, 16);
+    if (sig !== expectedSig) return null;
+    return { userId };
+  } catch {
+    return null;
+  }
+}

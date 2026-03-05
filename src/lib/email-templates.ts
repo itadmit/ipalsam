@@ -179,6 +179,53 @@ export function requestApprovedEmail(options: {
   return baseTemplate(bodyContent);
 }
 
+/** מייל למאזין – כשבקשות של חייל/מחלקה מאושרות */
+export function requestApprovedListenerEmail(options: {
+  listenerName: string;
+  requesterName: string;
+  departmentName: string;
+  items: { name: string; quantity: number; notes?: string | null }[];
+  approverNotes?: string | null;
+}) {
+  const { listenerName, requesterName, departmentName, items, approverNotes } = options;
+
+  const itemsRows = items
+    .map(
+      (i) =>
+        `<tr>
+          <td style="${STYLES.td}">${i.name}</td>
+          <td style="${STYLES.td}">${i.quantity}</td>
+          <td style="${STYLES.td}">${i.notes?.trim() || "-"}</td>
+        </tr>`
+    )
+    .join("");
+
+  const bodyContent = `
+    <div dir="rtl" style="${STYLES.body}">
+      <p style="${STYLES.title}">שלום ${listenerName},</p>
+      <p style="${STYLES.text}">
+        הבקשות של <strong>${requesterName}</strong> אושרו.
+      </p>
+      <p style="${STYLES.text}">מחלקה: <strong>${departmentName}</strong></p>
+      <table dir="rtl" style="${STYLES.table}">
+        <thead>
+          <tr>
+            <th style="${STYLES.th}">פריט</th>
+            <th style="${STYLES.th}">כמות</th>
+            <th style="${STYLES.th}">הערות</th>
+          </tr>
+        </thead>
+        <tbody>${itemsRows}</tbody>
+      </table>
+      ${approverNotes?.trim() ? `<p style="${STYLES.text}"><strong>הערות מהמאשר:</strong> ${approverNotes.trim()}</p>` : ""}
+    </div>
+    <div dir="rtl" style="${STYLES.footer}">
+      iPalsam – ניהול ציוד בבסיס צבאי
+    </div>`;
+
+  return baseTemplate(bodyContent);
+}
+
 export function openRequestItemApprovedEmail(options: {
   recipientName: string;
   itemName: string;

@@ -4,6 +4,7 @@ import { compare } from "bcryptjs";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { verifyImpersonateToken } from "@/lib/request-token";
 import type { SessionUser } from "@/types";
 
 declare module "next-auth" {
@@ -28,8 +29,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         phone: { label: "טלפון", type: "text" },
         password: { label: "סיסמה", type: "password" },
+        impersonateToken: { label: "טוקן התחברות כמשתמש", type: "text" },
       },
       async authorize(credentials) {
+        // התחברות כמשתמש (סופר אדמין) – ללא איפוס סיסמה
+        const impersonateToken = credentials?.impersonateToken as string | undefined;
+        if (impersonateToken) {
+          const parsed = verifyImpersonateToken(impersonateToken);
+          if (!parsed) return null;
+          const user = await db.query.users.findFirst({
+            where: eq(users.id, parsed.userId),
+          });
+          if (!user || !user.isActive) return null;
+          await db
+            .update(users)
+            .set({ lastLogin: new Date() })
+            .where(eq(users.id, user.id));
+          return {
+            id: user.id,
+            phone: user.phone,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+            departmentId: user.departmentId,
+            baseId: user.baseId,
+            mustChangePassword: user.mustChangePassword,
+          };
+        }
+
         if (!credentials?.phone || !credentials?.password) {
           return null;
         }

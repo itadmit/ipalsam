@@ -19,7 +19,7 @@ export function ImpersonateButton({ userId, userName, compact = true }: Imperson
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
-    if (!confirm(`התחבר בתור ${userName}? הסיסמה תאופס למספר הטלפון והמשתמש יצטרך להגדיר סיסמה חדשה.`)) return;
+    if (!confirm(`התחבר בתור ${userName}? תועבר לדשבורד של המשתמש (ללא שינוי סיסמה).`)) return;
     setLoading(true);
     try {
       const result = await prepareImpersonate(userId);
@@ -28,14 +28,13 @@ export function ImpersonateButton({ userId, userName, compact = true }: Imperson
         setLoading(false);
         return;
       }
-      if (!result.phone) {
+      if (!result.impersonateToken) {
         alert("שגיאה");
         setLoading(false);
         return;
       }
       const signInResult = await signIn("credentials", {
-        phone: result.phone,
-        password: result.phone,
+        impersonateToken: result.impersonateToken,
         redirect: false,
       });
       if (signInResult?.error) {

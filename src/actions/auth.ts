@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { createImpersonateToken } from "@/lib/request-token";
 import { eq } from "drizzle-orm";
 import { hash, compare } from "bcryptjs";
 import { auth } from "@/lib/auth";
@@ -89,7 +90,7 @@ export async function resetUserPassword(userId: string) {
   return { success: true };
 }
 
-/** מכין התחברות כמשתמש – מאפס סיסמה לטלפון ומחזיר את הטלפון. רק סופר אדמין. */
+/** יוצר טוקן להתחברות כמשתמש – ללא איפוס סיסמה. רק סופר אדמין. */
 export async function prepareImpersonate(userId: string) {
   const session = await auth();
 
@@ -99,23 +100,14 @@ export async function prepareImpersonate(userId: string) {
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
-    columns: { id: true, phone: true, isActive: true },
+    columns: { id: true, isActive: true },
   });
 
   if (!user || !user.isActive) {
     return { error: "משתמש לא נמצא או לא פעיל" };
   }
 
-  const hashedPassword = await hash(user.phone, 12);
-  await db
-    .update(users)
-    .set({
-      password: hashedPassword,
-      mustChangePassword: true,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, userId));
-
-  return { success: true, phone: user.phone };
+  const token = createImpersonateToken(userId);
+  return { success: true, impersonateToken: token };
 }
 

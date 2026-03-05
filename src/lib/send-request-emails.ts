@@ -1,10 +1,10 @@
 "use server";
 
 import { db } from "@/db";
-import { requests, users, departments, openRequests, openRequestItems, systemSettings } from "@/db/schema";
+import { requests, users, departments, openRequests, openRequestItems, systemSettings, requestApprovalListeners } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { sendEmail } from "./email";
-import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail, openRequestItemApprovedEmail, openRequestItemRejectedEmail } from "./email-templates";
+import { newRequestEmail, newOpenRequestEmail, requestApprovedEmail, requestRejectedEmail, requestApprovedListenerEmail, openRequestItemApprovedEmail, openRequestItemRejectedEmail } from "./email-templates";
 
 async function isNewRequestEmailsEnabled(): Promise<boolean> {
   const row = await db.query.systemSettings.findFirst({
@@ -206,6 +206,43 @@ export async function sendRequestApprovedEmail(
     subject: "הבקשה שלך אושרה – iPalsam",
     html,
   });
+
+  // שליחה למאזינים – מי שמאזין לבקשות של המבקש או של המחלקה
+  const requesterId = reqs[0]?.requesterId;
+  const departmentIdsSet = new Set(reqs.map((r) => r.departmentId).filter(Boolean));
+  if (!requesterId) return;
+
+  const allListeners = await db.query.requestApprovalListeners.findMany({
+    where: eq(requestApprovalListeners.receiveEmail, true),
+    with: {
+      listenerUser: { columns: { id: true, email: true, firstName: true, lastName: true } },
+    },
+  });
+  const listeners = allListeners.filter(
+    (l) =>
+      l.listenToUserId === requesterId ||
+      (l.listenToDepartmentId && departmentIdsSet.has(l.listenToDepartmentId))
+  );
+
+  const requesterName = `${requester.firstName} ${requester.lastName}`.trim();
+  const seenListenerIds = new Set<string>();
+  for (const l of listeners) {
+    if (!l.listenerUser?.email || seenListenerIds.has(l.listenerUserId)) continue;
+    seenListenerIds.add(l.listenerUserId);
+    const listenerName = `${l.listenerUser.firstName} ${l.listenerUser.lastName}`.trim();
+    const listenerHtml = requestApprovedListenerEmail({
+      listenerName,
+      requesterName,
+      departmentName,
+      items,
+      approverNotes,
+    });
+    await sendEmail({
+      to: l.listenerUser.email,
+      subject: `בקשות של ${requesterName} אושרו – iPalsam`,
+      html: listenerHtml,
+    });
+  }
 }
 
 export async function sendOpenRequestItemApprovedEmail(

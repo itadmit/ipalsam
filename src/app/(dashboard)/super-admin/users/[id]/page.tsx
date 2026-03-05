@@ -12,6 +12,7 @@ import { ArrowRight, User, Key, Shield } from "lucide-react";
 import { QuickRequestCardForUser } from "./quick-request-card";
 import { ResetPasswordButton } from "./reset-password-button";
 import { ImpersonateButton } from "@/app/(dashboard)/dashboard/users/impersonate-button";
+import { ApprovalListenersForm } from "./approval-listeners-form";
 import { getRoleLabel, formatPhone, formatDate } from "@/lib/utils";
 import { EditUserForm } from "./edit-user-form";
 import { UserVisibleFeaturesForm } from "./user-visible-features-form";
@@ -56,6 +57,12 @@ export default async function EditUserPage({
     where: eq(departments.isActive, true),
     columns: { id: true, name: true },
     orderBy: (departments, { asc }) => [asc(departments.name)],
+  });
+
+  const usersList = await db.query.users.findMany({
+    where: eq(users.isActive, true),
+    columns: { id: true, firstName: true, lastName: true, phone: true },
+    orderBy: (users, { asc }) => [asc(users.firstName)],
   });
 
   const isSuperAdmin = session.user.role === "super_admin";
@@ -203,6 +210,32 @@ export default async function EditUserPage({
             </Card>
           )}
 
+          {(isSuperAdmin || session.user.role === "hq_commander") && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  האזנה לאישורי בקשות
+                </CardTitle>
+                <p className="text-sm text-slate-500 mt-1">
+                  קבל מייל כשבקשות של חייל או מחלקה מאושרות
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ApprovalListenersForm
+                  userId={user.id}
+                  userEmail={user.email}
+                  usersList={usersList.map((u) => ({
+                    id: u.id,
+                    name: `${u.firstName} ${u.lastName}`.trim(),
+                    phone: u.phone || "",
+                  }))}
+                  departmentsList={departmentsList.map((d) => ({ id: d.id, name: d.name }))}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -210,16 +243,22 @@ export default async function EditUserPage({
                 אבטחה
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               {isSuperAdmin && (
                 <>
-                  <ResetPasswordButton userId={user.id} />
+                  <div>
+                    <p className="text-sm text-slate-500 mb-2">איפוס סיסמה – מאפס למספר הטלפון, המשתמש יצטרך להגדיר סיסמה חדשה</p>
+                    <ResetPasswordButton userId={user.id} />
+                  </div>
                   {user.id !== session.user.id && (
-                    <ImpersonateButton
-                      userId={user.id}
-                      userName={`${user.firstName} ${user.lastName}`}
-                      compact={false}
-                    />
+                    <div>
+                      <p className="text-sm text-slate-500 mb-2">התחבר בתור – מתחבר כמשתמש זה (ללא שינוי סיסמה)</p>
+                      <ImpersonateButton
+                        userId={user.id}
+                        userName={`${user.firstName} ${user.lastName}`}
+                        compact={false}
+                      />
+                    </div>
                   )}
                 </>
               )}

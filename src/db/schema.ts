@@ -338,6 +338,18 @@ export const openRequestItems = pgTable("open_request_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// האזנה לאישורי בקשות – משתמש שמקבל מייל כשבקשות של חייל/מחלקה מאושרות
+export const requestApprovalListeners = pgTable("request_approval_listeners", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listenerUserId: uuid("listener_user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  listenToUserId: uuid("listen_to_user_id").references(() => users.id, { onDelete: "cascade" }),
+  listenToDepartmentId: uuid("listen_to_department_id").references(() => departments.id, { onDelete: "cascade" }),
+  receiveEmail: boolean("receive_email").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // התראות
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -403,6 +415,7 @@ export const departmentsRelations = relations(departments, ({ one, many }) => ({
   handoverDepartments: many(handoverDepartments),
   soldierDepartments: many(soldierDepartments),
   openRequests: many(openRequests),
+  approvalListeners: many(requestApprovalListeners),
 }));
 
 export const handoverDepartmentsRelations = relations(handoverDepartments, ({ one }) => ({
@@ -443,6 +456,22 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   auditLogs: many(auditLogs),
   openRequests: many(openRequests),
   notifications: many(notifications),
+  approvalListenersAsListener: many(requestApprovalListeners),
+}));
+
+export const requestApprovalListenersRelations = relations(requestApprovalListeners, ({ one }) => ({
+  listenerUser: one(users, {
+    fields: [requestApprovalListeners.listenerUserId],
+    references: [users.id],
+  }),
+  listenToUser: one(users, {
+    fields: [requestApprovalListeners.listenToUserId],
+    references: [users.id],
+  }),
+  listenToDepartment: one(departments, {
+    fields: [requestApprovalListeners.listenToDepartmentId],
+    references: [departments.id],
+  }),
 }));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
