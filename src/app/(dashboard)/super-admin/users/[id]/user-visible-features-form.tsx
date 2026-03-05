@@ -55,7 +55,8 @@ export function UserVisibleFeaturesForm({
   const [features, setFeatures] = useState<ExtendedVisibleFeatures>(() => {
     const f: ExtendedVisibleFeatures = {};
     for (const key of VISIBLE_FEATURE_KEYS) {
-      f[key] = initialFeatures?.[key] ?? true;
+      const isAdminKey = ADMIN_FEATURES.includes(key);
+      f[key] = initialFeatures?.[key] ?? (isAdminKey ? false : true);
     }
     f["open-requests-filter"] =
       (initialFeatures?.["open-requests-filter"] as ExtendedVisibleFeatures["open-requests-filter"]) ?? "all";

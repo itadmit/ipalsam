@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { departments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { VehicleForm } from "./vehicle-form";
-import { VEHICLE_TYPES, FITNESS_OPTIONS } from "@/lib/vehicle-constants";
+import { VEHICLE_TYPES, FITNESS_OPTIONS, isVehicleDepartment } from "@/lib/vehicle-constants";
 
 export default async function NewVehiclePage({
   searchParams,
@@ -32,7 +32,7 @@ export default async function NewVehiclePage({
     columns: { id: true, name: true, departmentType: true },
   });
 
-  if (!department || department.departmentType !== "vehicles") {
+  if (!department || !isVehicleDepartment(department)) {
     redirect("/dashboard/vehicles");
   }
 

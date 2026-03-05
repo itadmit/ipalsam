@@ -1,3 +1,11 @@
+/** מחלקת רכב: לפי departmentType או שם "רכב" (מחלקות שנוצרו ידנית) */
+export function isVehicleDepartment(
+  dept: { departmentType?: string | null; name?: string | null } | null | undefined
+): boolean {
+  if (!dept) return false;
+  return dept.departmentType === "vehicles" || dept.name?.trim() === "רכב";
+}
+
 export const VEHICLE_TYPES = [
   { value: "חפק מגד", label: "חפק מגד" },
   { value: "חפק מפ", label: "חפק מפ" },

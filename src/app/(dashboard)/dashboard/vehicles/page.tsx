@@ -8,6 +8,7 @@ import { Car, FileWarning, Users, CreditCard, Plus } from "lucide-react";
 import { db } from "@/db";
 import { departments, vehicles } from "@/db/schema";
 import { eq, and, count } from "drizzle-orm";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
 
 export default async function VehiclesPage() {
   const session = await auth();
@@ -26,9 +27,9 @@ export default async function VehiclesPage() {
   } else if (isVehicleDept) {
     const dept = await db.query.departments.findFirst({
       where: eq(departments.id, session.user.departmentId!),
-      columns: { id: true, departmentType: true },
+      columns: { id: true, departmentType: true, name: true },
     });
-    vehicleDeptId = dept?.departmentType === "vehicles" ? dept.id : null;
+    vehicleDeptId = dept && isVehicleDepartment(dept) ? dept.id : null;
   }
 
   if (!vehicleDeptId) {

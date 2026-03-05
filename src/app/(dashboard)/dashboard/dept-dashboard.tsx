@@ -22,6 +22,7 @@ import type { SessionUser } from "@/types";
 import { db } from "@/db";
 import { itemTypes, requests, departments, vehicles } from "@/db/schema";
 import { eq, count, and, sql } from "drizzle-orm";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
 
 interface DeptDashboardProps {
   user: SessionUser;
@@ -374,9 +375,9 @@ async function VehiclesQuickAccess({ departmentId }: { departmentId: string | nu
 
   const dept = await db.query.departments.findFirst({
     where: eq(departments.id, departmentId),
-    columns: { departmentType: true },
+    columns: { departmentType: true, name: true },
   });
-  if (dept?.departmentType !== "vehicles") return null;
+  if (!dept || !isVehicleDepartment(dept)) return null;
 
   const [vCount] = await db
     .select({ count: count() })

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { db } from "@/db";
 import { departments } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
 import { AccidentReportForm } from "./accident-report-form";
 
 export default async function ReportAccidentPage({
@@ -26,11 +27,11 @@ export default async function ReportAccidentPage({
   if (!isAdmin && !isVehicleDept) redirect("/dashboard/vehicles");
 
   const department = await db.query.departments.findFirst({
-    where: and(eq(departments.id, dept), eq(departments.departmentType, "vehicles")),
-    columns: { id: true, name: true },
+    where: eq(departments.id, dept),
+    columns: { id: true, name: true, departmentType: true },
   });
 
-  if (!department) redirect("/dashboard/vehicles");
+  if (!department || !isVehicleDepartment(department)) redirect("/dashboard/vehicles");
 
   return (
     <div>

@@ -5,6 +5,7 @@ import type { SessionUser } from "@/types";
 import { db } from "@/db";
 import { openRequests, openRequestItems, handoverDepartments, departments, users } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
 
 async function getPendingOpenRequestsCount(userId: string, role: string, departmentId: string | null): Promise<number> {
   let deptIds: string[] = [];
@@ -55,9 +56,9 @@ async function getHasVehicleDepartmentAccess(role: string, departmentId: string 
   if (role === "dept_commander" && departmentId) {
     const dept = await db.query.departments.findFirst({
       where: eq(departments.id, departmentId),
-      columns: { departmentType: true },
+      columns: { departmentType: true, name: true },
     });
-    return dept?.departmentType === "vehicles";
+    return isVehicleDepartment(dept);
   }
   return false;
 }

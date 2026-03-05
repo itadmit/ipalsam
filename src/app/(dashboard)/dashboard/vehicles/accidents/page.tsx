@@ -8,8 +8,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FileWarning, ArrowRight } from "lucide-react";
 import { db } from "@/db";
 import { departments, accidentReports } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
 
 export default async function AccidentReportsPage({
   searchParams,
@@ -32,7 +33,7 @@ export default async function AccidentReportsPage({
     columns: { id: true, name: true, departmentType: true },
   });
 
-  if (!department || department.departmentType !== "vehicles") {
+  if (!department || !isVehicleDepartment(department)) {
     redirect("/dashboard/vehicles");
   }
 

@@ -9,6 +9,7 @@ import { CreditCard, Plus } from "lucide-react";
 import { db } from "@/db";
 import { departments, fuelCards } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
 
 export default async function FuelCardsPage({
   searchParams,
@@ -31,7 +32,7 @@ export default async function FuelCardsPage({
     columns: { id: true, name: true, departmentType: true },
   });
 
-  if (!department || department.departmentType !== "vehicles") {
+  if (!department || !isVehicleDepartment(department)) {
     redirect("/dashboard/vehicles");
   }
 

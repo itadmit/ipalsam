@@ -9,6 +9,7 @@ import { Users, Plus, ArrowRight } from "lucide-react";
 import { db } from "@/db";
 import { departments, vehicleDrivers } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { isVehicleDepartment } from "@/lib/vehicle-constants";
 
 export default async function DriversPage({
   searchParams,
@@ -31,7 +32,7 @@ export default async function DriversPage({
     columns: { id: true, name: true, departmentType: true },
   });
 
-  if (!department || department.departmentType !== "vehicles") {
+  if (!department || !isVehicleDepartment(department)) {
     redirect("/dashboard/vehicles");
   }
 
